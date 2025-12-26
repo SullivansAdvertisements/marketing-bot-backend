@@ -1,1 +1,3 @@
-# TikTok Ads API integration
+def create_tiktok_campaign():
+    # TikTok Ads API campaign creation
+    pass
