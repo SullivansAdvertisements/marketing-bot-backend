@@ -37,3 +37,5 @@ def exchange_code_for_token(code):
         raise Exception(f"Meta OAuth error: {data}")
 
     return data
+    if not META_APP_ID or not META_APP_SECRET:
+    raise RuntimeError("META_APP_ID or META_APP_SECRET is missing from environment variables")
