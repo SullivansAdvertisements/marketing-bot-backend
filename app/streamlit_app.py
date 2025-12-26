@@ -69,3 +69,32 @@ if accounts:
     st.success(f"Selected account: {account_map[selected]}")
 else:
     st.info("No Meta ad accounts connected yet.")
+    from auth.oauth_google import google_login_url, exchange_code_for_token as google_exchange
+from models.oauth_token import OAuthToken
+
+# -------------------------
+# GOOGLE ADS
+# -------------------------
+st.header("🔴 Connect Google Ads")
+
+st.markdown(
+    f"[🔴 Connect Google Ads]({google_login_url()})",
+    unsafe_allow_html=True
+)
+
+if "code" in query_params and "google" in st.experimental_get_query_params().get("scope", [""])[0]:
+    code = query_params["code"][0]
+
+    db = SessionLocal()
+    token_data = google_exchange(code)
+
+    if "access_token" in token_data:
+        db.add(OAuthToken(
+            user_id=USER_ID,
+            platform="google",
+            access_token=token_data["access_token"],
+            refresh_token=token_data.get("refresh_token")
+        ))
+        db.commit()
+
+        st.success("✅ Google Ads connected")
