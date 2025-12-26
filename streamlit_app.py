@@ -1,5 +1,7 @@
-import streamlit as st
+import sys
+import os
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app.auth.oauth_meta import meta_login_url, exchange_code_for_token
 # -------------------------------------------------
 # PAGE CONFIG
