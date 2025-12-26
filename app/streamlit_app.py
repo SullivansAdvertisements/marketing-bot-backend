@@ -4,7 +4,7 @@ from auth.oauth_meta import (
     exchange_code_for_token,
     fetch_meta_ad_accounts,
 )
-from database import SessionLocal, save_meta_token, save_meta_accounts
+from app.database import SessionLocal, save_meta_token, save_meta_accounts
 from models.ad_account import AdAccount
 
 st.set_page_config(page_title="Marketing Bot", layout="wide")
