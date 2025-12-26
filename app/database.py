@@ -1,24 +1,22 @@
-from app.models.oauth_token import OAuthToken
-from app.models.ad_account import AdAccount
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine
+import os
+
+Base = declarative_base()
+
+_engine = None
+_SessionLocal = None
 
 
-def save_meta_token(db, user_id, access_token):
-    token = OAuthToken(
-        user_id=user_id,
-        platform="meta",
-        access_token=access_token
-    )
-    db.add(token)
-    db.commit()
+def get_engine():
+    global _engine
+    if _engine is None:
+        _engine = create_engine(os.environ["DATABASE_URL"])
+    return _engine
 
 
-def save_meta_accounts(db, user_id, accounts):
-    for acct in accounts:
-        record = AdAccount(
-            user_id=user_id,
-            platform="meta",
-            account_id=acct["id"],
-            account_name=acct.get("name")
-        )
-        db.add(record)
-    db.commit()
+def get_session():
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(bind=get_engine())
+    return _SessionLocal()
