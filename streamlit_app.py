@@ -34,8 +34,6 @@ else:
 # -------------------------------------------------
 # HANDLE META OAUTH CALLBACK
 # -------------------------------------------------
-query = st.experimental_get_query_params()
-
 if "code" in query:
     st.divider()
     st.subheader("Meta OAuth Callback")
@@ -45,15 +43,12 @@ if "code" in query:
             token_data = exchange_code_for_token(query["code"][0])
 
         st.success("Meta connected successfully 🎉")
-
-        # Show token data (safe for now — remove later)
         st.json(token_data)
 
-        # Clear query params so refresh doesn't re-run OAuth
         st.experimental_set_query_params()
 
     except Exception as e:
-        st.error("Meta connection failed ❌")
+        st.error("Meta OAuth failed")
         st.exception(e)
 
 # -------------------------------------------------
