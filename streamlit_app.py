@@ -11,7 +11,7 @@ st.set_page_config(
 
 st.title("Marketing Bot")
 st.caption("Connect ad platforms to build real campaigns")
-
+query = st.experimental_get_query_params()
 # -------------------------------------------------
 # META ADS CONNECT
 # -------------------------------------------------
