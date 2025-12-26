@@ -1,4 +1,5 @@
-fastapi
-uvicorn
+streamlit
 requests
+sqlalchemy
+psycopg2-binary
 python-dotenv
