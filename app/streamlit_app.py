@@ -1,28 +1,31 @@
 import streamlit as st
-import urllib.parse
-from auth.oauth_meta import meta_login_url, meta_exchange_code
-from database import SessionLocal
-from models.oauth_token import OAuthToken
+from auth.oauth_meta import (
+    meta_login_url,
+    exchange_code_for_token,
+    fetch_meta_ad_accounts,
+)
+from database import SessionLocal, save_meta_token, save_meta_accounts
+from models.ad_account import AdAccount
 
 st.set_page_config(page_title="Marketing Bot", layout="wide")
 
-st.title("🚀 Marketing Bot")
+st.title("🚀 Marketing Bot – Meta Setup")
 
-# ----------------------------------
-# CONNECT META ADS
-# ----------------------------------
+USER_ID = "default-user"  # replace later with auth
+
+# -------------------------
+# 1️⃣ CONNECT META
+# -------------------------
 st.header("1️⃣ Connect Meta Ads")
 
-meta_auth_url = meta_login_url()
-
 st.markdown(
-    f"[🔵 Connect Meta Ads]({meta_auth_url})",
+    f"[🔵 Connect Meta Ads]({meta_login_url()})",
     unsafe_allow_html=True
 )
 
-# ----------------------------------
-# HANDLE OAUTH CALLBACK
-# ----------------------------------
+# -------------------------
+# 2️⃣ HANDLE OAUTH CALLBACK
+# -------------------------
 query_params = st.experimental_get_query_params()
 
 if "code" in query_params:
@@ -30,15 +33,39 @@ if "code" in query_params:
 
     db = SessionLocal()
 
-    token_data = meta_exchange_code(code)
+    token_data = exchange_code_for_token(code)
 
-    token = OAuthToken(
-        user_id="demo-user",  # replace later
-        platform="meta",
-        access_token=token_data["access_token"]
+    if "access_token" in token_data:
+        save_meta_token(db, USER_ID, token_data["access_token"])
+        st.success("✅ Meta connected successfully")
+
+        accounts = fetch_meta_ad_accounts(token_data["access_token"])
+        save_meta_accounts(db, USER_ID, accounts)
+
+        st.success(f"✅ {len(accounts)} ad accounts found")
+
+# -------------------------
+# 3️⃣ SELECT AD ACCOUNT
+# -------------------------
+st.header("2️⃣ Select Meta Ad Account")
+
+db = SessionLocal()
+accounts = db.query(AdAccount).filter_by(
+    user_id=USER_ID,
+    platform="meta"
+).all()
+
+if accounts:
+    account_map = {
+        f"{a.account_name or 'Ad Account'} ({a.account_id})": a.account_id
+        for a in accounts
+    }
+
+    selected = st.radio(
+        "Choose an account:",
+        list(account_map.keys())
     )
 
-    db.add(token)
-    db.commit()
-
-    st.success("Meta account connected successfully ✅")
+    st.success(f"Selected account: {account_map[selected]}")
+else:
+    st.info("No Meta ad accounts connected yet.")
