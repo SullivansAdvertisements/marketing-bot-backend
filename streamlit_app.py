@@ -22,3 +22,22 @@ if "data-deletion" in query:
     We will permanently delete all associated data within 30 days.
     """)
     st.stop()
+    import streamlit as st
+from app.auth.oauth_meta import exchange_code_for_token
+
+query = st.experimental_get_query_params()
+
+if "code" in query:
+    try:
+        with st.spinner("Connecting to Meta..."):
+            token_data = exchange_code_for_token(query["code"][0])
+
+        st.success("Meta connected successfully 🎉")
+        st.json(token_data)
+
+        # Clear URL params (important)
+        st.experimental_set_query_params()
+
+    except Exception as e:
+        st.error("Meta connection failed")
+        st.exception(e)
