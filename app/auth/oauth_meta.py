@@ -1,4 +1,6 @@
-from app.database import SessionLocal
+# app/auth/oauth_meta.py
+import os
+import requests
 
 META_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth"
 META_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token"
