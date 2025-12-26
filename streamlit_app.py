@@ -1,10 +1,6 @@
 import streamlit as st
 
-from app.auth.oauth_meta import (
-    meta_login_url,
-    exchange_code_for_token,
-)
-
+from app.auth.oauth_meta import meta_login_url, exchange_code_for_token
 # -------------------------------------------------
 # PAGE CONFIG
 # -------------------------------------------------
