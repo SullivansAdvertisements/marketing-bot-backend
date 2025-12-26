@@ -1,5 +1,5 @@
-from models.oauth_token import OAuthToken
-from models.ad_account import AdAccount
+from app.models.oauth_token import OAuthToken
+from app.models.ad_account import AdAccount
 
 
 def save_meta_token(db, user_id, access_token):
