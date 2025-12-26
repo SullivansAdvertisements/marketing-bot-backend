@@ -1,5 +1,4 @@
-import streamlit as st
-from auth.oauth_meta import (
+from app.auth.oauth_meta import (
     meta_login_url,
     exchange_code_for_token,
     fetch_meta_ad_accounts,
