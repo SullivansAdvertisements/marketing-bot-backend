@@ -1,9 +1,11 @@
 import os
-import urllib.parse
+from urllib.parse import urlencode
 import requests
 
-META_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth"
-META_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token"
+META_APP_ID = os.getenv("META_APP_ID")
+META_APP_SECRET = os.getenv("META_APP_SECRET")
+
+REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app"
 
 
 def meta_login_url():
