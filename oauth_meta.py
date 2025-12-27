@@ -6,18 +6,22 @@ META_AUTH_URL = "https://www.facebook.com/v19.0/dialog/oauth"
 META_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token"
 
 
-def meta_login_url():
-    return (
-        "https://www.facebook.com/v19.0/dialog/oauth"
-        "?client_id=" + META_APP_ID +
-        "&redirect_uri=" + META_REDIRECT_URI +
-        "&scope=ads_read,ads_management"
-        "&response_type=code"
-    )
+def get_meta_config():
+    meta_app_id = os.getenv("META_APP_ID")
+    meta_app_secret = os.getenv("META_APP_SECRET")
+    redirect_uri = os.getenv("META_REDIRECT_URI")
 
-    if not meta_app_id or not redirect_uri:
-        # Do NOT crash at import time
-        return "#"
+    if not meta_app_id or not meta_app_secret or not redirect_uri:
+        raise Exception(
+            "Missing Meta OAuth environment variables. "
+            "Check META_APP_ID, META_APP_SECRET, META_REDIRECT_URI"
+        )
+
+    return meta_app_id, meta_app_secret, redirect_uri
+
+
+def meta_login_url():
+    meta_app_id, _, redirect_uri = get_meta_config()
 
     params = {
         "client_id": meta_app_id,
@@ -29,15 +33,8 @@ def meta_login_url():
     return f"{META_AUTH_URL}?{urlencode(params)}"
 
 
-def exchange_code_for_token(code):
-    payload = {
-        "client_id": META_APP_ID,
-        "client_secret": META_APP_SECRET,
-        "redirect_uri": META_REDIRECT_URI,
-        "code": code,
-    }
-    if not meta_app_id or not meta_app_secret or not redirect_uri:
-        raise Exception("Meta OAuth env vars missing")
+def exchange_code_for_token(code: str):
+    meta_app_id, meta_app_secret, redirect_uri = get_meta_config()
 
     payload = {
         "client_id": meta_app_id,
@@ -47,27 +44,9 @@ def exchange_code_for_token(code):
     }
 
     r = requests.get(META_TOKEN_URL, params=payload, timeout=10)
-
-    try:
-        data = r.json()
-    except Exception:
-        raise Exception(f"Non-JSON response from Meta: {r.text}")
+    data = r.json()
 
     if r.status_code != 200:
         raise Exception(f"Meta OAuth error: {data}")
 
     return data
-def fetch_ad_accounts(access_token: str):
-    url = "https://graph.facebook.com/v19.0/me/adaccounts"
-    params = {
-        "access_token": access_token,
-        "fields": "id,name,account_status,currency,timezone_name"
-    }
-
-    r = requests.get(url, params=params)
-    data = r.json()
-
-    if r.status_code != 200:
-        raise Exception(f"Failed to fetch ad accounts: {data}")
-
-    return data["data"]
