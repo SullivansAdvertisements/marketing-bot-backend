@@ -1,5 +1,9 @@
-#import streamlit as st
-from urllib.parse import urlencode
+import streamlit as st
+
+st.set_page_config(
+    page_title="Marketing Bot",
+    layout="wide"
+)
 
 # ===============================
 # IMPORT HARDEST SYSTEM LOGIC
