@@ -52,4 +52,4 @@ def exchange_code_for_token(code: str):
     return data
     
     
-    def fetch_ad_accounts(access_token:
+def fetch_ad_accounts(access_token:
