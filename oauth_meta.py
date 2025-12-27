@@ -1,26 +1,16 @@
 import os
 import requests
 
-# ============================================================
-# Meta App Credentials
-# ============================================================
+print("oauth_meta.py loaded")
+
 META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 
-if not META_APP_ID or not META_APP_SECRET:
-    print("⚠️ META_APP_ID or META_APP_SECRET not set yet")
-# ============================================================
-# OAuth Redirect URI (MUST MATCH META DASHBOARD EXACTLY)
-# ============================================================
 REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app/"
 
-# ============================================================
-# OAuth: Exchange Authorization Code for Access Token
-# ============================================================
 def exchange_code_for_token(code: str) -> str:
-    """
-    Exchanges Meta OAuth authorization code for an access token
-    """
+    if not META_APP_ID or not META_APP_SECRET:
+        raise Exception("META_APP_ID or META_APP_SECRET not set")
 
     params = {
         "client_id": META_APP_ID,
@@ -36,25 +26,20 @@ def exchange_code_for_token(code: str) -> str:
     )
 
     data = r.json()
-    print("META TOKEN RESPONSE:", data)  # 🔍 keep until confirmed working
+    print("META TOKEN RESPONSE:", data)
 
     if "access_token" not in data:
         raise Exception(f"Meta OAuth error: {data}")
 
     return data["access_token"]
 
-# ============================================================
-# Fetch Ad Accounts
-# ============================================================
-def fetch_ad_accounts(access_token: str) -> dict:
-    """
-    Returns ad accounts available to the authenticated user
-    """
 
+def fetch_ad_accounts(access_token: str) -> dict:
     url = "https://graph.facebook.com/v19.0/me/adaccounts"
     params = {
         "access_token": access_token,
         "fields": "id,name,account_status,currency",
+        "limit": 50,
     }
 
     r = requests.get(url, params=params, timeout=10)
@@ -65,9 +50,7 @@ def fetch_ad_accounts(access_token: str) -> dict:
 
     return data
 
-# ============================================================
-# Create Meta Campaign (Paused by Default)
-# ============================================================
+
 def create_meta_campaign(
     access_token: str,
     ad_account_id: str,
@@ -75,17 +58,14 @@ def create_meta_campaign(
     objective: str,
     daily_budget: int,
 ) -> dict:
-    """
-    daily_budget is in CENTS (e.g. $10 = 1000)
-    """
 
-  clean_id = ad_account_id.replace("act_", "")
-url = f"https://graph.facebook.com/v19.0/act_{clean_id}/campaigns"
+    clean_id = ad_account_id.replace("act_", "")
+    url = f"https://graph.facebook.com/v19.0/act_{clean_id}/campaigns"
 
     payload = {
         "name": name,
         "objective": objective,
-        "status": "PAUSED",  # always create paused
+        "status": "PAUSED",
         "daily_budget": daily_budget,
         "special_ad_categories": [],
         "access_token": access_token,
