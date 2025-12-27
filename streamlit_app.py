@@ -1,9 +1,6 @@
 import streamlit as st
 
-from oauth_meta import (
-    meta_login_url,
-    exchange_code_for_token,
-    fetch_ad_accounts,
+from oauth_meta import meta_login_url, exchange_code_for_token, fetch_ad_accounts
 )
 a_login_url, exchange_code_for_token
 
