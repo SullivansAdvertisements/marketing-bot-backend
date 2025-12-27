@@ -8,10 +8,10 @@ st.set_page_config(
 # ----------------------------
 # Imports AFTER page config
 # ----------------------------
-from oauth_meta import (
-    meta_login_url,
+ from oauth_meta import (
     exchange_code_for_token,
-    fetch_ad_accounts
+    fetch_ad_accounts,
+    create_meta_campaign,
 )
 
 # ----------------------------
