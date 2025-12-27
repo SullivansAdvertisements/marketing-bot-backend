@@ -80,7 +80,8 @@ def create_meta_campaign(
     daily_budget is in CENTS (e.g. $10 = 1000)
     """
 
-    url = f"https://graph.facebook.com/v19.0/act_{ad_account_id}/campaigns"
+  clean_id = ad_account_id.replace("act_", "")
+url = f"https://graph.facebook.com/v19.0/act_{clean_id}/campaigns"
 
     payload = {
         "name": name,
