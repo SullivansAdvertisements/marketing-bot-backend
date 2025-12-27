@@ -57,3 +57,17 @@ def exchange_code_for_token(code):
         raise Exception(f"Meta OAuth error: {data}")
 
     return data
+def fetch_ad_accounts(access_token: str):
+    url = "https://graph.facebook.com/v19.0/me/adaccounts"
+    params = {
+        "access_token": access_token,
+        "fields": "id,name,account_status,currency,timezone_name"
+    }
+
+    r = requests.get(url, params=params)
+    data = r.json()
+
+    if r.status_code != 200:
+        raise Exception(f"Failed to fetch ad accounts: {data}")
+
+    return data["data"]
