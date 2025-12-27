@@ -18,3 +18,7 @@ if "code" in query:
     except Exception as e:
         st.error("Meta OAuth failed")
         st.exception(e)
+        accounts = fetch_ad_accounts(token["access_token"])
+        
+st.subheader("Your Ad Accounts")
+st.json(accounts)
