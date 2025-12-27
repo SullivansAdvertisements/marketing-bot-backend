@@ -1,14 +1,23 @@
 import streamlit as st
-
-st.set_page_config(
-    page_title="Marketing Bot",
-    layout="wide"
-)
+import os
 
 from oauth_meta import (
     exchange_code_for_token,
     fetch_ad_accounts,
     create_meta_campaign,
+)
+
+# ============================
+# META OAUTH CONFIG (PUT HERE)
+# ============================
+META_APP_ID = os.getenv("META_APP_ID")
+REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app/"
+
+META_AUTH_URL = (
+    "https://www.facebook.com/v19.0/dialog/oauth"
+    f"?client_id={META_APP_ID}"
+    f"&redirect_uri={REDIRECT_URI}"
+    "&scope=ads_read,ads_management,business_management"
 )
 
 # ----------------------------
