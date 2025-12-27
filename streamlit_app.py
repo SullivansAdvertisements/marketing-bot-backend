@@ -1,25 +1,80 @@
 import streamlit as st
-from oauth_meta import meta_login_url, exchange_code_for_token, fetch_ad_accounts
+from urllib.parse import urlencode
+
+# ===============================
+# IMPORT HARDEST SYSTEM LOGIC
+# ===============================
+from oauth_meta import (
+    meta_login_url,
+    exchange_code_for_token,
+    fetch_ad_accounts,
+)
+
+st.set_page_config(page_title="Marketing Bot", layout="wide")
 
 st.title("Marketing Bot")
 
-st.success("Imports OK")
-
-# OAuth callback handling
+# ===============================
+# 1️⃣ HANDLE OAUTH CALLBACK (HARDEST PART)
+# ===============================
 query = st.experimental_get_query_params()
 
-if "code" in query:
+if "code" in query and "meta_access_token" not in st.session_state:
+    st.subheader("Meta OAuth Callback")
+
     try:
         token = exchange_code_for_token(query["code"][0])
-        st.success("Meta connected successfully 🎉")
+
+        # 🔐 STORE TOKEN (CRITICAL)
         st.session_state["meta_access_token"] = token["access_token"]
-        accounts = fetch_ad_accounts(st.session_state["meta_access_token"])
-        st.json(accounts)
-        accounts = fetch_ad_accounts(token["access_token"])
-        st.json(accounts)
+
+        st.success("Meta connected successfully 🎉")
 
     except Exception as e:
         st.error("Meta OAuth failed")
         st.exception(e)
-else:
-    st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
+
+# ===============================
+# 2️⃣ CONNECT BUTTON (LOGIN ENTRY)
+# ===============================
+st.markdown("### Meta Ads")
+
+if "meta_access_token" not in st.session_state:
+    st.markdown(
+        f"[🔵 Connect Meta Ads]({meta_login_url()})",
+        unsafe_allow_html=True
+    )
+    st.stop()
+
+st.success("Meta connected ✅")
+
+# ===============================
+# 3️⃣ FETCH AD ACCOUNTS (REAL POWER CHECK)
+# ===============================
+st.subheader("Ad Accounts")
+
+try:
+    accounts = fetch_ad_accounts(st.session_state["meta_access_token"])
+
+    if not accounts.get("data"):
+        st.warning("No ad accounts found.")
+    else:
+        for acct in accounts["data"]:
+            st.success(f"{acct['name']}  ({acct['id']})")
+
+except Exception as e:
+    st.error("Failed to fetch ad accounts")
+    st.exception(e)
+
+# ===============================
+# 4️⃣ NEXT SYSTEM TABS (STUBS)
+# ===============================
+st.divider()
+
+st.subheader("Next Steps (Coming Next)")
+st.markdown("""
+- Campaign Builder  
+- Creative Generator  
+- Insights Dashboard  
+- Budget Optimizer  
+""")
