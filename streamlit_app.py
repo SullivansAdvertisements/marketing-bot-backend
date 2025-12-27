@@ -1,4 +1,4 @@
-import streamlit as st
+#import streamlit as st
 from urllib.parse import urlencode
 
 # ===============================
@@ -60,7 +60,8 @@ try:
         st.warning("No ad accounts found.")
     else:
         for acct in accounts["data"]:
-            st.success(f"{acct['name']}  ({acct['id']})")
+            acct_name = acct.get("name", "Unnamed Ad Account")
+st.success(f"{acct_name} ({acct['id']})")
 
 except Exception as e:
     st.error("Failed to fetch ad accounts")
