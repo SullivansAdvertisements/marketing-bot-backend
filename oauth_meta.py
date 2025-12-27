@@ -8,8 +8,7 @@ META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 
 if not META_APP_ID or not META_APP_SECRET:
-    raise RuntimeError("META_APP_ID or META_APP_SECRET not set")
-
+    print("⚠️ META_APP_ID or META_APP_SECRET not set yet")
 # ============================================================
 # OAuth Redirect URI (MUST MATCH META DASHBOARD EXACTLY)
 # ============================================================
