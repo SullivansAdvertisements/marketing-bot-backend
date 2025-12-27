@@ -51,21 +51,12 @@ st.success("Meta connected ✅")
 # ===============================
 # 3️⃣ FETCH AD ACCOUNTS (REAL POWER CHECK)
 # ===============================
-st.subheader("Ad Accounts")
-
-try:
-    accounts = fetch_ad_accounts(st.session_state["meta_access_token"])
-
-    if not accounts.get("data"):
-        st.warning("No ad accounts found.")
-    else:
-        for acct in accounts["data"]:
-            acct_name = acct.get("name", "Unnamed Ad Account")
-st.success(f"{acct_name} ({acct['id']})")
-
-except Exception as e:
-    st.error("Failed to fetch ad accounts")
-    st.exception(e)
+if accounts and "data" in accounts:
+    for acct in accounts["data"]:
+        acct_name = acct.get("name", "Unnamed Ad Account")
+        st.success(f"{acct_name} ({acct['id']})")
+else:
+    st.warning("No ad accounts found.")
 
 # ===============================
 # 4️⃣ NEXT SYSTEM TABS (STUBS)
