@@ -33,7 +33,6 @@ query = st.experimental_get_query_params()
 # ----------------------------
 # Connect Meta Ads
 # ----------------------------
-st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
 
 # ----------------------------
 # Handle OAuth Callback
