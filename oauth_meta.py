@@ -50,3 +50,6 @@ def exchange_code_for_token(code: str):
         raise Exception(f"Meta OAuth error: {data}")
 
     return data
+    
+    
+    def fetch_ad_accounts(access_token:
