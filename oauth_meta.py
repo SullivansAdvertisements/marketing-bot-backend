@@ -7,8 +7,13 @@ META_TOKEN_URL = "https://graph.facebook.com/v19.0/oauth/access_token"
 
 
 def meta_login_url():
-    meta_app_id = os.getenv("META_APP_ID")
-    redirect_uri = os.getenv("META_REDIRECT_URI")
+    return (
+        "https://www.facebook.com/v19.0/dialog/oauth"
+        "?client_id=" + META_APP_ID +
+        "&redirect_uri=" + META_REDIRECT_URI +
+        "&scope=ads_read,ads_management"
+        "&response_type=code"
+    )
 
     if not meta_app_id or not redirect_uri:
         # Do NOT crash at import time
@@ -24,11 +29,13 @@ def meta_login_url():
     return f"{META_AUTH_URL}?{urlencode(params)}"
 
 
-def exchange_code_for_token(code: str):
-    meta_app_id = os.getenv("META_APP_ID")
-    meta_app_secret = os.getenv("META_APP_SECRET")
-    redirect_uri = os.getenv("META_REDIRECT_URI")
-
+def exchange_code_for_token(code):
+    payload = {
+        "client_id": META_APP_ID,
+        "client_secret": META_APP_SECRET,
+        "redirect_uri": META_REDIRECT_URI,
+        "code": code,
+    }
     if not meta_app_id or not meta_app_secret or not redirect_uri:
         raise Exception("Meta OAuth env vars missing")
 
