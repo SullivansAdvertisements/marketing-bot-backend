@@ -2,7 +2,8 @@ import streamlit as st
 from oauth_meta import meta_login_url, exchange_code_for_token
 
 st.title("Marketing Bot")
-
+import os, streamlit as st
+st.write("FILES IN CWD:", os.listdir("."))
 st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
 
 query = st.experimental_get_query_params()
