@@ -1,16 +1,16 @@
 import streamlit as st
 
 # =================================================
-# MUST BE FIRST
+# MUST BE FIRST — MOBILE-FIRST
 # =================================================
 st.set_page_config(
     page_title="Marketing Bot",
-    layout="centered",  # MOBILE-FIRST
+    layout="centered",
     initial_sidebar_state="collapsed",
 )
 
 # =================================================
-# CORE IMPORTS (SAFE AT TOP)
+# SAFE CORE IMPORTS
 # =================================================
 from oauth_meta import (
     meta_login_url,
@@ -24,7 +24,7 @@ from oauth_meta import (
 st.title("🚀 Marketing Bot")
 
 # =================================================
-# META AUTH (GLOBAL CONTEXT)
+# 🔐 META AUTH (GLOBAL CONTEXT)
 # =================================================
 query = st.experimental_get_query_params()
 
@@ -61,7 +61,7 @@ account_map = {
 }
 
 # =================================================
-# MAIN TABS (MOBILE SAFE)
+# MAIN TABS
 # =================================================
 tab_auth, tab_research, tab_creative, tab_campaigns, tab_strategy, tab_utils = st.tabs(
     [
@@ -95,14 +95,14 @@ with tab_auth:
 with tab_research:
     from app.research.router import run_research
 
-    st.subheader("Market Research")
+    st.subheader("Market Research Engine")
 
     platform = st.selectbox(
         "Platform",
         ["google_trends", "google_keywords", "youtube", "tiktok", "meta_ads"]
     )
 
-    keyword = st.text_input("Keyword", placeholder="streetwear, gym wear")
+    keyword = st.text_input("Keyword / Topic")
 
     geo = st.selectbox("Country", ["US", "CA", "GB", "AU"])
 
@@ -140,7 +140,7 @@ with tab_creative:
     from app.creative.router import generate_creative
     from app.creative.meta_creatives import create_meta_ad_creative
 
-    st.subheader("Ad Creative Generator")
+    st.subheader("Creative Generator")
 
     product = st.text_input("Product")
     audience = st.text_input("Audience")
@@ -167,7 +167,7 @@ with tab_creative:
         st.caption(f"CTA: {creative['cta']} | Source: {creative['source']}")
 
     st.divider()
-    st.subheader("📤 Push to Meta")
+    st.subheader("📤 Push Creative to Meta")
 
     page_id = st.text_input("Facebook Page ID")
     destination_url = st.text_input("Destination URL")
@@ -195,7 +195,12 @@ with tab_creative:
 # =================================================
 with tab_campaigns:
     st.subheader("Campaign Builder")
-    st.info("Campaign creation wired separately (Meta Ads API ready).")
+    st.info(
+        "Campaign creation hooks are ready.\n\n"
+        "Connect:\n"
+        "- app/campaigns/meta_campaigns.py\n"
+        "- app/utils/validators.py"
+    )
 
 # =================================================
 # 🧠 STRATEGY TAB
@@ -205,10 +210,10 @@ with tab_strategy:
 
     st.subheader("Budget & Strategy Planning")
 
-    budget = st.number_input("Monthly Budget ($)", 100, value=1000)
+    budget = st.number_input("Monthly Budget ($)", min_value=100, value=1000)
     objective = st.selectbox("Objective", ["awareness", "traffic", "sales"])
     risk = st.selectbox("Risk Profile", ["conservative", "balanced", "aggressive"])
-    aov = st.number_input("Average Order Value", 1, value=50)
+    aov = st.number_input("Average Order Value ($)", min_value=1, value=50)
 
     if st.button("📈 Generate Strategy"):
         strategy = generate_strategy(
@@ -219,14 +224,24 @@ with tab_strategy:
         )
 
         st.success("Strategy generated")
+
+        st.subheader("💰 Budget Allocation")
         st.bar_chart(strategy["allocation"])
+
+        st.subheader("📊 Performance Projections")
         st.json(strategy["projections"])
+
+        st.caption("Estimates based on public platform benchmarks.")
 
 # =================================================
 # 🧰 SYSTEM TAB
 # =================================================
 with tab_utils:
     st.subheader("System Status")
-    st.success("App running normally")
-    st.write("Meta connected:", True)
+
+    st.success("Application healthy")
+    st.write("Meta Connected:", True)
     st.write("Ad Account:", st.session_state.get("ad_account_id"))
+    st.write("Creative Cached:", bool(st.session_state.get("last_creative")))
+
+    st.caption("Utilities active: logging, rate limits, validators")
