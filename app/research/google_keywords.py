@@ -1,5 +1,11 @@
-from google.ads.googleads.client import GoogleAdsClient
+def get_google_keywords(seed_keyword: str):
+    """
+    Placeholder for Google Ads Keyword Planner.
+    Requires:
+    - Google Ads API
+    - MCC account
+    """
 
-def fetch_keywords(client: GoogleAdsClient, keyword):
-    service = client.get_service("KeywordPlanIdeaService")
-    # real keyword planner request
+    raise NotImplementedError(
+        "Google Keyword Planner requires Google Ads API approval"
+    )
