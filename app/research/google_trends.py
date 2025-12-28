@@ -3,13 +3,14 @@ from pytrends.request import TrendReq
 def get_google_trends(
     keyword: str,
     geo: str = "US",
-    timeframe: str = "today 12-m"
+    timeframe: str = "today 12-m",
 ):
     pytrends = TrendReq(hl="en-US", tz=360)
+
     pytrends.build_payload(
-        [keyword],
+        kw_list=[keyword],
+        geo=geo,
         timeframe=timeframe,
-        geo=geo
     )
 
     interest = pytrends.interest_over_time()
@@ -17,4 +18,12 @@ def get_google_trends(
     if interest.empty:
         return []
 
-    return interest.reset_index().to_dict(orient="records")
+    interest = interest.reset_index()
+
+    return [
+        {
+            "date": str(row["date"]),
+            "interest": int(row[keyword]),
+        }
+        for _, row in interest.iterrows()
+    ]
