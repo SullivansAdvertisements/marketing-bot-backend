@@ -1,14 +1,16 @@
 import streamlit as st
 
+# =================================================
 # MUST be first Streamlit call
+# =================================================
 st.set_page_config(
     page_title="Marketing Bot",
     layout="wide"
 )
 
-# -------------------------------------------------
-# Imports (match your oauth_meta.py exactly)
-# -------------------------------------------------
+# =================================================
+# Imports – OAuth + Campaign System
+# =================================================
 from oauth_meta import (
     meta_login_url,
     exchange_code_for_token,
@@ -19,14 +21,19 @@ from oauth_meta import (
     fetch_campaign_insights,
 )
 
-# -------------------------------------------------
+# =================================================
+# Imports – Research Engine
+# =================================================
+from app.research.router import run_research
+
+# =================================================
 # Title
-# -------------------------------------------------
+# =================================================
 st.title("🚀 Marketing Bot")
 
-# -------------------------------------------------
+# =================================================
 # OAuth callback handling
-# -------------------------------------------------
+# =================================================
 query = st.experimental_get_query_params()
 
 st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
@@ -40,15 +47,15 @@ if "code" in query and "meta_access_token" not in st.session_state:
         st.error("Meta OAuth failed")
         st.exception(e)
 
-# -------------------------------------------------
+# =================================================
 # Require auth beyond this point
-# -------------------------------------------------
+# =================================================
 if "meta_access_token" not in st.session_state:
     st.stop()
 
-# -------------------------------------------------
+# =================================================
 # Fetch Ad Accounts
-# -------------------------------------------------
+# =================================================
 st.header("📂 Ad Accounts")
 
 accounts_response = fetch_ad_accounts(st.session_state["meta_access_token"])
@@ -72,9 +79,60 @@ selected_account_name = st.selectbox(
 
 selected_account_id = account_map[selected_account_name]
 
-# -------------------------------------------------
+# =================================================
+# RESEARCH TAB (NEW)
+# =================================================
+st.divider()
+st.header("🔍 Research Engine")
+
+research_platform = st.selectbox(
+    "Platform",
+    ["google_trends", "youtube", "meta_ads"]
+)
+
+research_keyword = st.text_input(
+    "Keyword",
+    "streetwear"
+)
+
+research_geo = st.selectbox(
+    "Country",
+    ["US", "CA", "GB", "AU"],
+    index=0
+)
+
+research_timeframe = st.selectbox(
+    "Timeframe (Google Trends)",
+    ["today 7-d", "today 90-d", "today 12-m", "today 5-y"],
+    index=2
+)
+
+if st.button("Run Research"):
+    try:
+        results = run_research(
+            platform=research_platform,
+            keyword=research_keyword,
+            geo=research_geo,
+            timeframe=research_timeframe,
+            access_token=st.session_state["meta_access_token"],
+        )
+
+        st.session_state["research_results"] = results
+        st.success("Research complete")
+
+        if isinstance(results, list):
+            for row in results[:10]:
+                st.json(row)
+        else:
+            st.json(results)
+
+    except Exception as e:
+        st.error("Research failed")
+        st.exception(e)
+
+# =================================================
 # CAMPAIGN BUILDER
-# -------------------------------------------------
+# =================================================
 st.divider()
 st.header("📣 Campaign Builder")
 
@@ -114,9 +172,9 @@ if st.button("🚀 Create Campaign"):
         st.error("Campaign creation failed")
         st.exception(e)
 
-# -------------------------------------------------
+# =================================================
 # AD SET BUILDER
-# -------------------------------------------------
+# =================================================
 st.divider()
 st.header("🎯 Ad Set Builder")
 
@@ -167,9 +225,9 @@ if st.button("Create Ad Set"):
         st.error("Ad Set creation failed")
         st.exception(e)
 
-# -------------------------------------------------
+# =================================================
 # CREATIVE BUILDER
-# -------------------------------------------------
+# =================================================
 st.divider()
 st.header("🎨 Creative Builder")
 
@@ -195,9 +253,9 @@ if st.button("Create Creative"):
         st.error("Creative creation failed")
         st.exception(e)
 
-# -------------------------------------------------
+# =================================================
 # INSIGHTS
-# -------------------------------------------------
+# =================================================
 st.divider()
 st.header("📊 Campaign Insights")
 
