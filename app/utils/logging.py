@@ -1,27 +1,23 @@
-# app/utils/logging.py
-
 import logging
 import os
 
-_LOGGER_CACHE = {}
-
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 def get_logger(name: str) -> logging.Logger:
-    if name in _LOGGER_CACHE:
-        return _LOGGER_CACHE[name]
-
-    level = os.getenv("LOG_LEVEL", "INFO").upper()
-
     logger = logging.getLogger(name)
-    logger.setLevel(level)
 
-    if not logger.handlers:
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            "[%(asctime)s] [%(levelname)s] %(name)s: %(message)s"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    if logger.handlers:
+        return logger  # Prevent duplicate handlers
 
-    _LOGGER_CACHE[name] = logger
+    logger.setLevel(LOG_LEVEL)
+
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "[%(asctime)s] %(levelname)s | %(name)s | %(message)s"
+    )
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+    logger.propagate = False
+
     return logger
