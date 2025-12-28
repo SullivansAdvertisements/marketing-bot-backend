@@ -1,32 +1,56 @@
 import os
 import requests
+from urllib.parse import urlencode
 
-print("oauth_meta.py loaded")
-
+# =========================================================
+# ENVIRONMENT VARIABLES (REQUIRED)
+# =========================================================
 META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 
-REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app/"
+# MUST MATCH META DASHBOARD *EXACTLY*
+META_REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app/"
 
+GRAPH_API_VERSION = "v19.0"
+GRAPH_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
+
+if not META_APP_ID or not META_APP_SECRET:
+    raise Exception("META_APP_ID or META_APP_SECRET is missing")
+
+# =========================================================
+# 1️⃣ META LOGIN URL
+# =========================================================
+def meta_login_url() -> str:
+    params = {
+        "client_id": META_APP_ID,
+        "redirect_uri": META_REDIRECT_URI,
+        "response_type": "code",
+        "scope": ",".join([
+            "ads_management",
+            "ads_read",
+            "business_management",
+            "public_profile",
+        ]),
+    }
+
+    return f"https://www.facebook.com/{GRAPH_API_VERSION}/dialog/oauth?{urlencode(params)}"
+
+
+# =========================================================
+# 2️⃣ EXCHANGE CODE → ACCESS TOKEN
+# =========================================================
 def exchange_code_for_token(code: str) -> str:
-    if not META_APP_ID or not META_APP_SECRET:
-        raise Exception("META_APP_ID or META_APP_SECRET not set")
+    url = f"{GRAPH_BASE}/oauth/access_token"
 
     params = {
         "client_id": META_APP_ID,
         "client_secret": META_APP_SECRET,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": META_REDIRECT_URI,
         "code": code,
     }
 
-    r = requests.get(
-        "https://graph.facebook.com/v19.0/oauth/access_token",
-        params=params,
-        timeout=10,
-    )
-
+    r = requests.get(url, params=params, timeout=10)
     data = r.json()
-    print("META TOKEN RESPONSE:", data)
 
     if "access_token" not in data:
         raise Exception(f"Meta OAuth error: {data}")
@@ -34,23 +58,29 @@ def exchange_code_for_token(code: str) -> str:
     return data["access_token"]
 
 
+# =========================================================
+# 3️⃣ FETCH AD ACCOUNTS
+# =========================================================
 def fetch_ad_accounts(access_token: str) -> dict:
-    url = "https://graph.facebook.com/v19.0/me/adaccounts"
+    url = f"{GRAPH_BASE}/me/adaccounts"
+
     params = {
-        "access_token": access_token,
         "fields": "id,name,account_status,currency",
-        "limit": 50,
+        "access_token": access_token,
     }
 
     r = requests.get(url, params=params, timeout=10)
     data = r.json()
 
-    if r.status_code != 200:
-        raise Exception(f"Failed to fetch ad accounts: {data}")
+    if "error" in data:
+        raise Exception(f"Fetch ad accounts failed: {data}")
 
     return data
 
 
+# =========================================================
+# 4️⃣ CREATE META CAMPAIGN
+# =========================================================
 def create_meta_campaign(
     access_token: str,
     ad_account_id: str,
@@ -58,9 +88,8 @@ def create_meta_campaign(
     objective: str,
     daily_budget: int,
 ) -> dict:
-
-    clean_id = ad_account_id.replace("act_", "")
-    url = f"https://graph.facebook.com/v19.0/act_{clean_id}/campaigns"
+    account_id = ad_account_id.replace("act_", "")
+    url = f"{GRAPH_BASE}/act_{account_id}/campaigns"
 
     payload = {
         "name": name,
@@ -74,12 +103,15 @@ def create_meta_campaign(
     r = requests.post(url, data=payload, timeout=10)
     data = r.json()
 
-    if r.status_code != 200:
+    if "error" in data:
         raise Exception(f"Campaign creation failed: {data}")
 
     return data
-    
-    
+
+
+# =========================================================
+# 5️⃣ CREATE META AD SET
+# =========================================================
 def create_meta_adset(
     access_token: str,
     ad_account_id: str,
@@ -91,54 +123,60 @@ def create_meta_adset(
     geo_countries: list,
     age_min: int,
     age_max: int,
-):
-    url = f"https://graph.facebook.com/v19.0/act_{ad_account_id}/adsets"
+) -> dict:
+    account_id = ad_account_id.replace("act_", "")
+    url = f"{GRAPH_BASE}/act_{account_id}/adsets"
 
     payload = {
         "name": name,
         "campaign_id": campaign_id,
-        "billing_event": "IMPRESSIONS",
-        "optimization_goal": "REACH",
         "daily_budget": daily_budget,
-        "start_time": start_time,
-        "end_time": end_time,
+        "billing_event": "IMPRESSIONS",
+        "optimization_goal": "LINK_CLICKS",
+        "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
         "targeting": {
-            "geo_locations": {
-                "countries": geo_countries
-            },
+            "geo_locations": {"countries": geo_countries},
             "age_min": age_min,
             "age_max": age_max,
         },
+        "start_time": start_time,
+        "end_time": end_time,
         "status": "PAUSED",
         "access_token": access_token,
     }
 
-    r = requests.post(url, json=payload, timeout=10)
+    r = requests.post(url, data=payload, timeout=10)
     data = r.json()
 
-    if r.status_code != 200:
+    if "error" in data:
         raise Exception(f"Ad set creation failed: {data}")
 
     return data
-    
-    def create_meta_ad_creative(
+
+
+# =========================================================
+# 6️⃣ CREATE META AD CREATIVE (TEXT/LINK)
+# =========================================================
+def create_meta_ad_creative(
     access_token: str,
     ad_account_id: str,
     page_id: str,
     headline: str,
     primary_text: str,
-):
-    url = f"https://graph.facebook.com/v19.0/act_{ad_account_id}/adcreatives"
+    destination_url: str,
+) -> dict:
+    account_id = ad_account_id.replace("act_", "")
+    url = f"{GRAPH_BASE}/act_{account_id}/adcreatives"
 
     payload = {
-        "name": "Text Creative",
+        "name": "Streamlit Creative",
         "object_story_spec": {
             "page_id": page_id,
             "link_data": {
                 "message": primary_text,
-                "link": "https://example.com",
+                "link": destination_url,
                 "name": headline,
-            }
+            },
         },
         "access_token": access_token,
     }
@@ -146,24 +184,30 @@ def create_meta_adset(
     r = requests.post(url, json=payload, timeout=10)
     data = r.json()
 
-    if r.status_code != 200:
+    if "error" in data:
         raise Exception(f"Creative creation failed: {data}")
 
     return data
-    
-    
-def fetch_campaign_insights(access_token: str, campaign_id: str):
-    url = f"https://graph.facebook.com/v19.0/{campaign_id}/insights"
+
+
+# =========================================================
+# 7️⃣ FETCH CAMPAIGN INSIGHTS
+# =========================================================
+def fetch_campaign_insights(
+    access_token: str,
+    campaign_id: str,
+) -> dict:
+    url = f"{GRAPH_BASE}/{campaign_id}/insights"
 
     params = {
-        "fields": "impressions,clicks,spend,ctr,cpc",
+        "fields": "impressions,clicks,spend,ctr,cpm",
         "access_token": access_token,
     }
 
     r = requests.get(url, params=params, timeout=10)
     data = r.json()
 
-    if r.status_code != 200:
+    if "error" in data:
         raise Exception(f"Insights fetch failed: {data}")
 
     return data
