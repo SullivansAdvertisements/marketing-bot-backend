@@ -3,21 +3,29 @@ import requests
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-def get_youtube_trends(region_code="US", max_results=10):
-    url = "https://www.googleapis.com/youtube/v3/videos"
+def get_youtube_trends(keyword: str, max_results: int = 10):
+    if not YOUTUBE_API_KEY:
+        raise Exception("YOUTUBE_API_KEY missing")
+
+    url = "https://www.googleapis.com/youtube/v3/search"
 
     params = {
-        "part": "snippet,statistics",
-        "chart": "mostPopular",
-        "regionCode": region_code,
+        "part": "snippet",
+        "q": keyword,
+        "type": "video",
+        "order": "viewCount",
         "maxResults": max_results,
         "key": YOUTUBE_API_KEY,
     }
 
-    r = requests.get(url, params=params, timeout=10)
+    r = requests.get(url, params=params)
     data = r.json()
 
-    if "items" not in data:
-        return []
-
-    return data["items"]
+    return [
+        {
+            "title": item["snippet"]["title"],
+            "channel": item["snippet"]["channelTitle"],
+            "published": item["snippet"]["publishedAt"],
+        }
+        for item in data.get("items", [])
+    ]
