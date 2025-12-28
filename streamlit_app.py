@@ -250,19 +250,112 @@ if st.button("🚀 Create Meta Ad Creative"):
 
     st.session_state["last_creative"] = creative
 # =================================================
-# STRATEGY TAB (PLACEHOLDER – SAFE)
+# STRATEGY TAB
 # =================================================
-with tab_strategy:
-    st.header("🧠 Strategy Engine")
+st.divider()
+st.header("🧠 Strategy & Budget Planning")
 
-    st.info("Strategy logic ready for wiring.")
+from app.strategy.router import generate_strategy
 
-    st.markdown("""
-    This tab will use:
-    - app/strategy/*
-    - Research + Performance signals
-    """)
+# -----------------------------
+# Inputs
+# -----------------------------
+total_budget = st.number_input(
+    "Total Monthly Ad Budget ($)",
+    min_value=100,
+    value=1000,
+    step=100
+)
 
+objective = st.selectbox(
+    "Primary Objective",
+    ["awareness", "traffic", "sales"]
+)
+
+risk_level = st.selectbox(
+    "Risk Profile",
+    ["conservative", "balanced", "aggressive"],
+    index=1
+)
+
+average_order_value = st.number_input(
+    "Average Order Value ($)",
+    min_value=1,
+    value=50,
+    step=5
+)
+
+# -----------------------------
+# Generate Strategy
+# -----------------------------
+if st.button("📊 Generate Strategy Plan"):
+    try:
+        strategy = generate_strategy(
+            total_budget=total_budget,
+            objective=objective,
+            risk_level=risk_level,
+            average_order_value=average_order_value,
+        )
+
+        st.success("Strategy generated successfully")
+
+        # -----------------------------
+        # Budget Allocation
+        # -----------------------------
+        st.subheader("💰 Budget Allocation")
+
+        allocation = strategy["allocation"]
+
+        for platform, amount in allocation.items():
+            st.write(f"**{platform.upper()}**: ${amount:,.2f}")
+
+        st.bar_chart(allocation)
+
+        # -----------------------------
+        # Performance Estimates
+        # -----------------------------
+        st.subheader("📈 Estimated Performance (Ranges)")
+
+        projections = strategy["projections"]
+
+        for platform, metrics in projections.items():
+            st.markdown(f"### {platform.upper()}")
+
+            if "note" in metrics:
+                st.info(metrics["note"])
+                continue
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Estimated Clicks",
+                f"{metrics['estimated_clicks']:,}"
+            )
+
+            col2.metric(
+                "Estimated Conversions",
+                f"{metrics['estimated_conversions']}"
+            )
+
+            col3.metric(
+                "Estimated Revenue",
+                f"${metrics['estimated_revenue']:,.2f}"
+            )
+
+        # -----------------------------
+        # Assumptions
+        # -----------------------------
+        st.subheader("⚠️ Planning Assumptions")
+        st.json(strategy["assumptions"])
+
+        st.caption(
+            "All estimates are based on public platform benchmarks. "
+            "Actual results may vary due to creative quality, audience, and offer."
+        )
+
+    except Exception as e:
+        st.error("Strategy generation failed")
+        st.exception(e)
 # =================================================
 # SYSTEM / UTILS TAB
 # =================================================
