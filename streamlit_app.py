@@ -9,7 +9,7 @@ st.set_page_config(
 )
 
 # =================================================
-# Meta OAuth + Ads
+# Imports – OAuth + Campaign System
 # =================================================
 from oauth_meta import (
     meta_login_url,
@@ -22,9 +22,14 @@ from oauth_meta import (
 )
 
 # =================================================
-# Research Engine
+# Imports – Research Engine
 # =================================================
 from app.research.router import run_research
+
+# =================================================
+# Imports – Creative AI Engine (OPENAI WIRED HERE)
+# =================================================
+from app.creative.router import generate_creative
 
 # =================================================
 # Title
@@ -32,7 +37,7 @@ from app.research.router import run_research
 st.title("🚀 Marketing Bot")
 
 # =================================================
-# OAuth Callback Handling (GLOBAL)
+# OAuth callback handling
 # =================================================
 query = st.experimental_get_query_params()
 
@@ -40,172 +45,200 @@ st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
 
 if "code" in query and "meta_access_token" not in st.session_state:
     try:
-        token = exchange_code_for_token(query["code"][0])
-        st.session_state["meta_access_token"] = token
+        access_token = exchange_code_for_token(query["code"][0])
+        st.session_state["meta_access_token"] = access_token
         st.success("Meta connected successfully 🎉")
     except Exception as e:
         st.error("Meta OAuth failed")
         st.exception(e)
 
 # =================================================
-# Tabs (MATCH YOUR FOLDERS)
+# Require auth beyond this point
 # =================================================
-tab_auth, tab_research, tab_campaigns, tab_creative, tab_strategy = st.tabs([
-    "🔐 Auth",
-    "🔍 Research",
-    "📣 Campaigns",
-    "🎨 Creative",
-    "🧠 Strategy",
-])
+if "meta_access_token" not in st.session_state:
+    st.stop()
 
 # =================================================
-# 🔐 AUTH TAB
+# Fetch Ad Accounts
 # =================================================
-with tab_auth:
-    st.subheader("Meta Authentication")
+st.header("📂 Ad Accounts")
 
-    if "meta_access_token" in st.session_state:
-        st.success("Meta connected")
-        st.code(st.session_state["meta_access_token"][:30] + "...", language="text")
-    else:
-        st.warning("Not connected to Meta Ads")
+accounts_response = fetch_ad_accounts(st.session_state["meta_access_token"])
+accounts = accounts_response.get("data", [])
+
+if not accounts:
+    st.warning("No ad accounts found.")
+    st.stop()
+
+account_map = {}
+for acct in accounts:
+    label = acct.get("name", acct["id"])
+    clean_id = acct["id"].replace("act_", "")
+    account_map[label] = clean_id
+    st.success(f"{label} ({acct['id']})")
+
+selected_account_name = st.selectbox(
+    "Select Ad Account",
+    list(account_map.keys())
+)
+
+selected_account_id = account_map[selected_account_name]
 
 # =================================================
 # 🔍 RESEARCH TAB
 # =================================================
-with tab_research:
-    st.subheader("Market Research Engine")
+st.divider()
+st.header("🔍 Research Engine")
 
-    if "meta_access_token" not in st.session_state:
-        st.warning("Connect Meta Ads first")
-        st.stop()
+research_platform = st.selectbox(
+    "Platform",
+    ["google_trends", "youtube", "meta_ads"]
+)
 
-    platform = st.selectbox(
-        "Platform",
-        ["google_trends", "youtube", "meta_ads"]
-    )
+research_keyword = st.text_input("Keyword", "streetwear")
+research_geo = st.selectbox("Country", ["US", "CA", "GB", "AU"])
+research_timeframe = st.selectbox(
+    "Timeframe",
+    ["today 7-d", "today 90-d", "today 12-m", "today 5-y"],
+)
 
-    keyword = st.text_input("Keyword", "streetwear")
-    geo = st.selectbox("Country", ["US", "CA", "GB", "AU"])
-    timeframe = st.selectbox(
-        "Timeframe",
-        ["today 7-d", "today 90-d", "today 12-m", "today 5-y"]
-    )
+if st.button("Run Research"):
+    try:
+        results = run_research(
+            platform=research_platform,
+            keyword=research_keyword,
+            geo=research_geo,
+            timeframe=research_timeframe,
+            access_token=st.session_state["meta_access_token"],
+        )
 
-    if st.button("Run Research"):
-        try:
-            results = run_research(
-                platform=platform,
-                keyword=keyword,
-                geo=geo,
-                timeframe=timeframe,
-                access_token=st.session_state["meta_access_token"],
-            )
-            st.session_state["research_results"] = results
-            st.success("Research complete")
+        st.session_state["research_results"] = results
+        st.success("Research complete")
 
-            if isinstance(results, list):
-                st.dataframe(results)
-            else:
-                st.json(results)
+        st.json(results)
 
-        except Exception as e:
-            st.error("Research failed")
-            st.exception(e)
+    except Exception as e:
+        st.error("Research failed")
+        st.exception(e)
 
 # =================================================
-# 📣 CAMPAIGNS TAB
+# 🧠 CREATIVE AI TAB (OPENAI WIRED)
 # =================================================
-with tab_campaigns:
-    st.subheader("Campaign Builder")
+st.divider()
+st.header("🎨 Creative AI Generator")
 
-    if "meta_access_token" not in st.session_state:
-        st.warning("Connect Meta Ads first")
-        st.stop()
+product = st.text_input("Product", "Streetwear Hoodie")
+audience = st.text_input("Audience", "Gen Z streetwear fans")
 
-    accounts = fetch_ad_accounts(st.session_state["meta_access_token"]).get("data", [])
+goal = st.selectbox(
+    "Goal",
+    ["sales", "leads", "awareness"]
+)
 
-    if not accounts:
-        st.warning("No ad accounts found")
-        st.stop()
+tone = st.selectbox(
+    "Tone",
+    ["bold", "friendly", "professional"]
+)
 
-    acct_map = {
-        acct.get("name", acct["id"]): acct["id"].replace("act_", "")
-        for acct in accounts
-    }
+platform = st.selectbox(
+    "Platform",
+    ["meta", "tiktok", "youtube"]
+)
 
-    selected_account = st.selectbox("Ad Account", list(acct_map.keys()))
-    ad_account_id = acct_map[selected_account]
+use_ai = st.checkbox(
+    "Use OpenAI (fallback if unavailable)",
+    value=True
+)
 
-    campaign_name = st.text_input("Campaign Name", "My Campaign")
-    objective = st.selectbox(
-        "Objective",
-        ["TRAFFIC", "LEAD_GENERATION", "OUTCOME_SALES", "OUTCOME_AWARENESS"]
-    )
-    daily_budget = st.number_input("Daily Budget ($)", 5, 1000, 10)
+if st.button("Generate Ad Copy"):
+    try:
+        creative = generate_creative(
+            product=product,
+            audience=audience,
+            goal=goal,
+            tone=tone,
+            platform=platform,
+        )
 
-    if st.button("Create Campaign"):
-        try:
-            result = create_meta_campaign(
-                access_token=st.session_state["meta_access_token"],
-                ad_account_id=ad_account_id,
-                name=campaign_name,
-                objective=objective,
-                daily_budget=int(daily_budget * 100),
-            )
-            st.session_state["campaign_id"] = result["id"]
-            st.success("Campaign created")
-            st.json(result)
-        except Exception as e:
-            st.error("Campaign failed")
-            st.exception(e)
+        st.success("Creative generated")
 
-# =================================================
-# 🎨 CREATIVE TAB
-# =================================================
-with tab_creative:
-    st.subheader("Creative Builder")
+        st.subheader("Headline")
+        st.write(creative["headline"])
 
-    if "meta_access_token" not in st.session_state:
-        st.warning("Connect Meta Ads first")
-        st.stop()
+        st.subheader("Primary Text")
+        st.write(creative["primary_text"])
 
-    ad_account_id = st.text_input("Ad Account ID")
-    page_id = st.text_input("Facebook Page ID")
-    headline = st.text_input("Headline", "Shop the Drop")
-    primary_text = st.text_area("Primary Text", "Limited stock. Tap now.")
+        st.subheader("CTA")
+        st.write(creative["cta"])
 
-    if st.button("Create Creative"):
-        try:
-            creative = create_meta_ad_creative(
-                access_token=st.session_state["meta_access_token"],
-                ad_account_id=ad_account_id,
-                page_id=page_id,
-                headline=headline,
-                primary_text=primary_text,
-            )
-            st.success("Creative created")
-            st.json(creative)
-        except Exception as e:
-            st.error("Creative failed")
-            st.exception(e)
+        st.caption(f"Source: {creative.get('source')}")
+
+        st.session_state["last_creative"] = creative
+
+    except Exception as e:
+        st.error("Creative generation failed")
+        st.exception(e)
 
 # =================================================
-# 🧠 STRATEGY TAB (NEXT PHASE)
+# 📣 CAMPAIGN BUILDER
 # =================================================
-with tab_strategy:
-    st.subheader("Strategy Engine (Coming Online)")
+st.divider()
+st.header("📣 Campaign Builder")
 
-    st.info("""
-    This tab will:
-    • Turn research → targeting
-    • Pick objectives automatically
-    • Recommend budgets
-    • Generate creatives with AI
-    """)
+campaign_name = st.text_input("Campaign Name", "My First Campaign")
 
-    if "research_results" in st.session_state:
-        st.success("Research data available for strategy engine")
-        st.json(st.session_state["research_results"])
-    else:
-        st.warning("Run research first")
+OBJECTIVES = {
+    "Traffic": "TRAFFIC",
+    "Leads": "LEAD_GENERATION",
+    "Sales": "OUTCOME_SALES",
+    "Awareness": "OUTCOME_AWARENESS",
+    "Engagement": "POST_ENGAGEMENT",
+}
+
+objective_label = st.selectbox("Objective", list(OBJECTIVES.keys()))
+objective = OBJECTIVES[objective_label]
+
+daily_budget = st.number_input(
+    "Daily Budget ($)",
+    min_value=5,
+    value=10,
+    step=5
+)
+
+if st.button("🚀 Create Campaign"):
+    try:
+        result = create_meta_campaign(
+            access_token=st.session_state["meta_access_token"],
+            ad_account_id=selected_account_id,
+            name=campaign_name,
+            objective=objective,
+            daily_budget=int(daily_budget * 100),
+        )
+        st.success("Campaign created (PAUSED)")
+        st.session_state["campaign_id"] = result["id"]
+        st.json(result)
+    except Exception as e:
+        st.error("Campaign creation failed")
+        st.exception(e)
+
+# =================================================
+# 📊 INSIGHTS
+# =================================================
+st.divider()
+st.header("📊 Campaign Insights")
+
+insights_campaign_id = st.text_input(
+    "Campaign ID",
+    value=st.session_state.get("campaign_id", "")
+)
+
+if st.button("Load Insights"):
+    try:
+        insights = fetch_campaign_insights(
+            st.session_state["meta_access_token"],
+            insights_campaign_id
+        )
+        st.json(insights)
+    except Exception as e:
+        st.error("Failed to load insights")
+        st.exception(e)
