@@ -129,18 +129,46 @@ with tab_campaigns:
 # =================================================
 # CREATIVE TAB (PLACEHOLDER – SAFE)
 # =================================================
-with tab_creative:
-    st.header("🎨 Creative Generator")
+st.divider()
+st.header("🎨 Creative Builder (AI-Powered)")
 
-    st.info("Creative generation module ready.")
+product = st.text_input("Product / Offer", "Streetwear Hoodie")
+audience = st.text_input("Target Audience", "Streetwear fans 18–30")
 
-    st.markdown("""
-    This tab will use:
-    - app/creative/generator.py
-    - app/creative/router.py
-    - OpenAI (if API key exists)
-    """)
+goal = st.selectbox(
+    "Goal",
+    ["sales", "leads", "traffic"]
+)
 
+tone = st.selectbox(
+    "Tone",
+    ["bold", "friendly", "premium"]
+)
+
+platform = st.selectbox(
+    "Platform",
+    ["meta", "tiktok", "youtube"]
+)
+
+use_ai = st.checkbox("Use AI (OpenAI)", value=True)
+
+if st.button("✨ Generate Ad Copy"):
+    creative = generate_creative(
+        product=product,
+        audience=audience,
+        goal=goal,
+        tone=tone,
+        platform=platform,
+        use_ai=use_ai,
+    )
+
+    st.subheader("Generated Creative")
+    st.success(f"Headline: {creative['headline']}")
+    st.write(creative["primary_text"])
+    st.info(f"CTA: {creative['cta']}")
+    st.caption(f"Source: {creative['source']}")
+
+    st.session_state["last_creative"] = creative
 # =================================================
 # STRATEGY TAB (PLACEHOLDER – SAFE)
 # =================================================
