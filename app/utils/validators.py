@@ -1,30 +1,27 @@
-# app/utils/validators.py
-
-from datetime import date
 from typing import List
 
-
-def validate_budget(amount: int):
-    if amount < 500:
-        raise ValueError("Budget must be at least $5.00 (500 cents)")
-
-
-def validate_dates(start: date, end: date):
-    if end <= start:
-        raise ValueError("End date must be after start date")
+def validate_non_empty(value: str, field_name: str):
+    if not value or not value.strip():
+        raise ValueError(f"{field_name} cannot be empty")
 
 
-def validate_age_range(min_age: int, max_age: int):
-    if min_age < 13:
-        raise ValueError("Minimum age must be 13+")
-    if max_age < min_age:
-        raise ValueError("Max age must be greater than min age")
+def validate_budget(amount: float):
+    if amount <= 0:
+        raise ValueError("Budget must be greater than 0")
 
 
 def validate_countries(countries: List[str]):
     if not countries:
         raise ValueError("At least one country must be selected")
 
-    for c in countries:
-        if len(c) != 2:
-            raise ValueError(f"Invalid country code: {c}")
+
+def validate_age_range(age_min: int, age_max: int):
+    if age_min < 13:
+        raise ValueError("Minimum age must be at least 13")
+    if age_min >= age_max:
+        raise ValueError("age_min must be less than age_max")
+
+
+def validate_url(url: str):
+    if not url.startswith("http"):
+        raise ValueError("URL must start with http or https")
