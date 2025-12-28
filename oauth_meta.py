@@ -120,3 +120,33 @@ def create_meta_adset(
         raise Exception(f"Ad set creation failed: {data}")
 
     return data
+    
+    def create_meta_ad_creative(
+    access_token: str,
+    ad_account_id: str,
+    page_id: str,
+    headline: str,
+    primary_text: str,
+):
+    url = f"https://graph.facebook.com/v19.0/act_{ad_account_id}/adcreatives"
+
+    payload = {
+        "name": "Text Creative",
+        "object_story_spec": {
+            "page_id": page_id,
+            "link_data": {
+                "message": primary_text,
+                "link": "https://example.com",
+                "name": headline,
+            }
+        },
+        "access_token": access_token,
+    }
+
+    r = requests.post(url, json=payload, timeout=10)
+    data = r.json()
+
+    if r.status_code != 200:
+        raise Exception(f"Creative creation failed: {data}")
+
+    return data
