@@ -162,7 +162,28 @@ if st.button("✨ Generate Ad Copy"):
         platform=platform,
         use_ai=use_ai,
     )
+st.subheader("📤 Push Creative to Meta")
 
+page_id = st.text_input("Facebook Page ID")
+destination_url = st.text_input("Destination URL", "https://example.com")
+
+if st.button("🚀 Create Meta Ad Creative"):
+    creative = st.session_state.get("last_creative")
+
+    if not creative:
+        st.warning("Generate creative first")
+    else:
+        result = create_meta_ad_creative(
+            access_token=st.session_state["meta_access_token"],
+            ad_account_id=selected_account_id,
+            page_id=page_id,
+            headline=creative["headline"],
+            primary_text=creative["primary_text"],
+            destination_url=destination_url,
+        )
+
+        st.success("Meta Creative Created")
+        st.json(result)
     st.subheader("Generated Creative")
     st.success(f"Headline: {creative['headline']}")
     st.write(creative["primary_text"])
