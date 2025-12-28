@@ -78,3 +78,45 @@ def create_meta_campaign(
         raise Exception(f"Campaign creation failed: {data}")
 
     return data
+    
+    
+def create_meta_adset(
+    access_token: str,
+    ad_account_id: str,
+    campaign_id: str,
+    name: str,
+    daily_budget: int,
+    start_time: str,
+    end_time: str,
+    geo_countries: list,
+    age_min: int,
+    age_max: int,
+):
+    url = f"https://graph.facebook.com/v19.0/act_{ad_account_id}/adsets"
+
+    payload = {
+        "name": name,
+        "campaign_id": campaign_id,
+        "billing_event": "IMPRESSIONS",
+        "optimization_goal": "REACH",
+        "daily_budget": daily_budget,
+        "start_time": start_time,
+        "end_time": end_time,
+        "targeting": {
+            "geo_locations": {
+                "countries": geo_countries
+            },
+            "age_min": age_min,
+            "age_max": age_max,
+        },
+        "status": "PAUSED",
+        "access_token": access_token,
+    }
+
+    r = requests.post(url, json=payload, timeout=10)
+    data = r.json()
+
+    if r.status_code != 200:
+        raise Exception(f"Ad set creation failed: {data}")
+
+    return data
