@@ -1,32 +1,28 @@
-# app/utils/rate_limits.py
-
 import time
-from functools import wraps
+from collections import defaultdict
 
-_CALL_TIMES = {}
+# Simple in-memory rate limiter
+_CALL_LOG = defaultdict(list)
 
-
-def rate_limit(key: str, seconds: int = 2):
+def rate_limit(
+    key: str,
+    max_calls: int,
+    window_seconds: int
+):
     """
-    Simple in-memory rate limiter.
-    key = unique operation name
-    seconds = cooldown
+    Prevents more than `max_calls` in `window_seconds`
     """
+    now = time.time()
+    calls = _CALL_LOG[key]
 
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            now = time.time()
-            last_called = _CALL_TIMES.get(key, 0)
+    # Remove expired calls
+    _CALL_LOG[key] = [
+        t for t in calls if now - t < window_seconds
+    ]
 
-            if now - last_called < seconds:
-                raise Exception(
-                    f"Rate limit exceeded for '{key}'. Try again in {int(seconds - (now - last_called))}s."
-                )
+    if len(_CALL_LOG[key]) >= max_calls:
+        raise Exception(
+            f"Rate limit exceeded: {max_calls} calls per {window_seconds}s"
+        )
 
-            _CALL_TIMES[key] = now
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
+    _CALL_LOG[key].append(now)
