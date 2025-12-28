@@ -1,14 +1,28 @@
 from typing import Dict
 import os
 
-from openai import OpenAI
+OPENAI_AVAILABLE = False
+client = None
 
-# -------------------------------------------------
-# OpenAI client (uses OPENAI_API_KEY env var)
-# -------------------------------------------------
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+
+def get_openai_client():
+    global client, OPENAI_AVAILABLE
+
+    if client is not None:
+        return client
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        OPENAI_AVAILABLE = True
+        return client
+    except Exception as e:
+        print("OpenAI init failed:", e)
+        return None
 
 
 def generate_ad_copy(
@@ -19,60 +33,54 @@ def generate_ad_copy(
     platform: str = "meta",
     use_ai: bool = True,
 ) -> Dict[str, str]:
-    """
-    Core creative generator.
-    Uses OpenAI if available, otherwise falls back to rules.
-    """
 
-    # -------------------------------------------------
-    # AI GENERATION PATH
-    # -------------------------------------------------
-    if use_ai and os.getenv("OPENAI_API_KEY"):
-        try:
-            prompt = f"""
-            Create high-performing ad copy.
+    # -----------------------------
+    # AI PATH (SAFE)
+    # -----------------------------
+    if use_ai:
+        client = get_openai_client()
+        if client:
+            try:
+                prompt = f"""
+Create high-performing ad copy.
 
-            Product: {product}
-            Audience: {audience}
-            Goal: {goal}
-            Tone: {tone}
-            Platform: {platform}
+Product: {product}
+Audience: {audience}
+Goal: {goal}
+Tone: {tone}
+Platform: {platform}
 
-            Return JSON with:
-            - headline
-            - primary_text
-            - cta
-            """
+Return JSON with:
+- headline
+- primary_text
+- cta
+"""
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are an elite performance advertiser."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.7,
-            )
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are an elite performance advertiser."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.7,
+                )
 
-            content = response.choices[0].message.content
+                import json
+                creative = json.loads(response.choices[0].message.content)
 
-            # VERY IMPORTANT: enforce JSON safety
-            import json
-            creative = json.loads(content)
+                return {
+                    "headline": creative["headline"],
+                    "primary_text": creative["primary_text"],
+                    "cta": creative["cta"],
+                    "source": "openai",
+                }
 
-            return {
-                "headline": creative["headline"],
-                "primary_text": creative["primary_text"],
-                "cta": creative["cta"],
-                "source": "openai",
-            }
+            except Exception as e:
+                print("OpenAI failed, falling back:", e)
 
-        except Exception as e:
-            # Fall through to deterministic logic
-            print("OpenAI failed, using fallback:", e)
-
-    # -------------------------------------------------
-    # FALLBACK (DETERMINISTIC / NO AI)
-    # -------------------------------------------------
+    # -----------------------------
+    # FALLBACK (ALWAYS WORKS)
+    # -----------------------------
     if goal == "sales":
         headline = f"{product} That {audience} Can't Ignore"
         cta = "Shop Now"
@@ -83,23 +91,7 @@ def generate_ad_copy(
         headline = f"Discover {product}"
         cta = "Learn More"
 
-    if tone == "bold":
-        primary_text = (
-            f"{product} built for {audience}. "
-            "Limited availability. No excuses."
-        )
-    elif tone == "friendly":
-        primary_text = (
-            f"Hey {audience}! "
-            f"{product} is here and people are loving it."
-        )
-    else:
-        primary_text = f"{product} designed with {audience} in mind."
-
-    if platform == "tiktok":
-        primary_text += " 🔥"
-    elif platform == "youtube":
-        primary_text += " Watch now."
+    primary_text = f"{product} built for {audience}. Limited availability."
 
     return {
         "headline": headline,
