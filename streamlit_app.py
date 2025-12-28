@@ -1,6 +1,7 @@
 import streamlit as st
 from app.creative.router import generate_creative
 from app.creative.meta_creatives import create_meta_ad_creative
+from app.research.router import run_research
 # =================================================
 # MUST be first Streamlit call
 # =================================================
