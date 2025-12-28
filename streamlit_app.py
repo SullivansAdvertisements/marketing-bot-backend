@@ -101,18 +101,75 @@ with tab_auth:
 # =================================================
 # RESEARCH TAB (PLACEHOLDER – SAFE)
 # =================================================
-with tab_research:
-    st.header("🔍 Research Engine")
+# =================================================
+# 🔍 RESEARCH ENGINE
+# =================================================
+st.divider()
+st.header("🔍 Market Research Engine")
 
-    st.info("Research module ready. Wiring comes next.")
+research_platform = st.selectbox(
+    "Research Source",
+    [
+        "google_trends",
+        "google_keywords",
+        "youtube",
+        "tiktok",
+        "meta_ads",
+    ],
+)
 
-    st.markdown("""
-    This tab will use:
-    - app/research/google_trends.py
-    - app/research/youtube_trends.py
-    - app/research/meta_ad_library.py
-    """)
+research_keyword = st.text_input(
+    "Keyword / Topic",
+    placeholder="streetwear, gym clothing, skincare",
+)
 
+research_geo = st.selectbox(
+    "Country",
+    ["US", "CA", "GB", "AU"],
+    index=0,
+)
+
+research_timeframe = st.selectbox(
+    "Timeframe (Google Trends only)",
+    ["today 7-d", "today 90-d", "today 12-m", "today 5-y"],
+    index=2,
+)
+
+if st.button("📊 Run Research"):
+    if not research_keyword:
+        st.warning("Enter a keyword first")
+        st.stop()
+
+    try:
+        results = run_research(
+            platform=research_platform,
+            keyword=research_keyword,
+            geo=research_geo,
+            timeframe=research_timeframe,
+            access_token=st.session_state.get("meta_access_token"),
+        )
+
+        st.session_state["research_results"] = results
+        st.success("Research completed")
+
+        # ------------------------------
+        # Display Results (Smart Render)
+        # ------------------------------
+        if isinstance(results, list) and results:
+            st.subheader("Top Results")
+
+            for row in results[:10]:
+                st.json(row)
+
+        elif isinstance(results, dict):
+            st.json(results)
+
+        else:
+            st.warning("No data returned")
+
+    except Exception as e:
+        st.error("Research failed")
+        st.exception(e)
 # =================================================
 # CAMPAIGNS TAB (PLACEHOLDER – SAFE)
 # =================================================
