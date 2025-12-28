@@ -150,3 +150,20 @@ def create_meta_adset(
         raise Exception(f"Creative creation failed: {data}")
 
     return data
+    
+    
+def fetch_campaign_insights(access_token: str, campaign_id: str):
+    url = f"https://graph.facebook.com/v19.0/{campaign_id}/insights"
+
+    params = {
+        "fields": "impressions,clicks,spend,ctr,cpc",
+        "access_token": access_token,
+    }
+
+    r = requests.get(url, params=params, timeout=10)
+    data = r.json()
+
+    if r.status_code != 200:
+        raise Exception(f"Insights fetch failed: {data}")
+
+    return data
