@@ -8,7 +8,7 @@ from oauth_meta import (
     exchange_code_for_token,
     fetch_ad_accounts,
 )
-
+st.write("GOOGLE_OAUTH_AVAILABLE =", GOOGLE_OAUTH_AVAILABLE)
 # =================================================
 # GOOGLE OAUTH (SAFE OPTIONAL IMPORT)
 # =================================================
