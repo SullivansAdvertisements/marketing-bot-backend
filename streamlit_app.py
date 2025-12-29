@@ -1,15 +1,4 @@
-import os
 import streamlit as st
-import pandas as pd
-
-# =================================================
-# MUST BE FIRST — MOBILE FIRST
-# =================================================
-st.set_page_config(
-    page_title="Marketing Bot",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
 
 # ================================
 # Meta OAuth (repo root)
@@ -21,12 +10,18 @@ from oauth_meta import (
 )
 
 # ================================
-# Google OAuth (repo root)
+# Google OAuth (optional / safe)
 # ================================
-from google_oauth import (
-    google_login_url,
-    exchange_google_code_for_token,
-)
+GOOGLE_OAUTH_AVAILABLE = False
+
+try:
+    from google_oauth import (
+        google_login_url,
+        exchange_google_code_for_token,
+    )
+    GOOGLE_OAUTH_AVAILABLE = True
+except Exception as e:
+    GOOGLE_OAUTH_AVAILABLE = False
 # =================================================
 # APP TITLE
 # =================================================
