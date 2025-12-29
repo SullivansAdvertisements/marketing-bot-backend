@@ -1,83 +1,62 @@
 import streamlit as st
+import pandas as pd
 
-# ================================
-# Meta OAuth (repo root)
-# ================================
+# =================================================
+# MUST BE FIRST — MOBILE-FIRST
+# =================================================
+st.set_page_config(
+    page_title="Marketing Bot",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+# =================================================
+# META OAUTH (REQUIRED)
+# =================================================
 from oauth_meta import (
     meta_login_url,
     exchange_code_for_token,
     fetch_ad_accounts,
 )
-st.write("GOOGLE_OAUTH_AVAILABLE =", GOOGLE_OAUTH_AVAILABLE)
+
 # =================================================
-# GOOGLE OAUTH (SAFE OPTIONAL IMPORT)
+# GOOGLE OAUTH (OPTIONAL — SAFE)
 # =================================================
 GOOGLE_OAUTH_AVAILABLE = False
+google_login_url = None
+exchange_google_code_for_token = None
 
 try:
-    from google_oauth import google_login_url, exchange_google_code_for_token
+    from google_oauth import (
+        google_login_url,
+        exchange_google_code_for_token,
+    )
     GOOGLE_OAUTH_AVAILABLE = True
 except Exception:
     GOOGLE_OAUTH_AVAILABLE = False
-    st.subheader("Google Authentication")
 
-if GOOGLE_OAUTH_AVAILABLE:
-    st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
-
-    query = st.experimental_get_query_params()
-    if "code" in query and "google_access_token" not in st.session_state:
-        try:
-            token = exchange_google_code_for_token(query["code"][0])
-            st.session_state["google_access_token"] = token
-            st.success("Google connected successfully")
-        except Exception as e:
-            st.error("Google OAuth failed")
-            st.exception(e)
-else:
-    st.info("Google OAuth not configured yet.")
-    
-#==================================================
+# =================================================
 # APP TITLE
 # =================================================
 st.title("🚀 Marketing Bot")
 
 # =================================================
-# GLOBAL QUERY PARAMS (USED BY BOTH OAUTH FLOWS)
+# 🔐 META AUTH (GLOBAL)
 # =================================================
 query = st.experimental_get_query_params()
 
-# =================================================
-# 🔐 AUTH HANDLING (META + GOOGLE)
-# =================================================
-with st.sidebar:
-    st.subheader("🔐 Authentication")
+st.subheader("Meta Authentication")
+st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
 
-    # -------- META OAUTH --------
-    st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
+if "code" in query and "meta_access_token" not in st.session_state:
+    try:
+        token = exchange_code_for_token(query["code"][0])
+        st.session_state["meta_access_token"] = token
+        st.success("Meta connected successfully")
+    except Exception as e:
+        st.error("Meta OAuth failed")
+        st.exception(e)
 
-    if "code" in query and "meta_access_token" not in st.session_state:
-        try:
-            meta_token = exchange_code_for_token(query["code"][0])
-            st.session_state["meta_access_token"] = meta_token
-            st.success("Meta connected")
-        except Exception:
-            pass
-
-    # -------- GOOGLE OAUTH --------
-    st.markdown("---")
-    st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
-
-    if "code" in query and "google_user" not in st.session_state:
-        try:
-            user = exchange_google_code(query["code"][0])
-            st.session_state["google_user"] = user
-            st.success(f"Signed in as {user['email']}")
-        except Exception:
-            pass
-
-# =================================================
-# REQUIRE META AUTH TO CONTINUE
-# =================================================
 if "meta_access_token" not in st.session_state:
     st.warning("Connect Meta Ads to unlock the app.")
     st.stop()
@@ -85,7 +64,7 @@ if "meta_access_token" not in st.session_state:
 ACCESS_TOKEN = st.session_state["meta_access_token"]
 
 # =================================================
-# FETCH AD ACCOUNTS (GLOBAL)
+# FETCH AD ACCOUNTS
 # =================================================
 accounts_response = fetch_ad_accounts(ACCESS_TOKEN)
 accounts = accounts_response.get("data", [])
@@ -102,7 +81,7 @@ account_map = {
 # =================================================
 # MAIN TABS
 # =================================================
-tab_auth, tab_research, tab_creative, tab_campaigns, tab_strategy, tab_utils = st.tabs(
+tab_auth, tab_research, tab_creative, tab_campaigns, tab_strategy, tab_system = st.tabs(
     [
         "🔐 Auth",
         "🔍 Research",
@@ -119,14 +98,6 @@ tab_auth, tab_research, tab_creative, tab_campaigns, tab_strategy, tab_utils = s
 with tab_auth:
     st.subheader("Connected Accounts")
 
-    if "google_user" in st.session_state:
-        user = st.session_state["google_user"]
-        st.image(user.get("picture"), width=64)
-        st.write(user.get("name"))
-        st.caption(user.get("email"))
-    else:
-        st.warning("Not signed in with Google")
-
     selected_account = st.selectbox(
         "Active Meta Ad Account",
         list(account_map.keys())
@@ -135,20 +106,37 @@ with tab_auth:
     st.session_state["ad_account_id"] = account_map[selected_account]
     st.success(f"Using Meta account: {selected_account}")
 
+    st.divider()
+    st.subheader("Google Authentication")
+
+    if GOOGLE_OAUTH_AVAILABLE and google_login_url:
+        st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
+
+        if "code" in query and "google_access_token" not in st.session_state:
+            try:
+                gtoken = exchange_google_code_for_token(query["code"][0])
+                st.session_state["google_access_token"] = gtoken
+                st.success("Google connected successfully")
+            except Exception as e:
+                st.error("Google OAuth failed")
+                st.exception(e)
+    else:
+        st.info("Google OAuth not configured yet.")
+
 # =================================================
-# 🔍 RESEARCH TAB (TABLES)
+# 🔍 RESEARCH TAB
 # =================================================
 with tab_research:
     from app.research.router import run_research
 
-    st.subheader("🔍 Market Research")
+    st.subheader("Market Research Engine")
 
     platform = st.selectbox(
         "Platform",
-        ["google_trends", "youtube", "meta_ads"]
+        ["google_trends", "google_keywords", "youtube", "tiktok", "meta_ads"]
     )
 
-    keyword = st.text_input("Keyword / Topic")
+    keyword = st.text_input("Keyword / Topic", placeholder="streetwear, fitness, skincare")
     geo = st.selectbox("Country", ["US", "CA", "GB", "AU"])
     timeframe = st.selectbox(
         "Timeframe",
@@ -158,26 +146,29 @@ with tab_research:
     if st.button("📊 Run Research"):
         if not keyword:
             st.warning("Enter a keyword")
-            st.stop()
-
-        results = run_research(
-            platform=platform,
-            keyword=keyword,
-            geo=geo,
-            timeframe=timeframe,
-            access_token=ACCESS_TOKEN,
-        )
-
-        st.success("Research completed")
-
-        if isinstance(results, list) and results:
-            df = pd.DataFrame(results)
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-            with st.expander("🔎 Raw Data"):
-                st.json(results)
         else:
-            st.warning("No data returned")
+            try:
+                results = run_research(
+                    platform=platform,
+                    keyword=keyword,
+                    geo=geo,
+                    timeframe=timeframe,
+                    access_token=ACCESS_TOKEN,
+                )
+
+                st.success("Research completed")
+
+                if isinstance(results, list) and results:
+                    df = pd.DataFrame(results)
+                    st.dataframe(df, use_container_width=True)
+                elif isinstance(results, dict):
+                    st.json(results)
+                else:
+                    st.info("No data returned")
+
+            except Exception as e:
+                st.error("Research failed")
+                st.exception(e)
 
 # =================================================
 # 🎨 CREATIVE TAB
@@ -186,13 +177,13 @@ with tab_creative:
     from app.creative.router import generate_creative
     from app.creative.meta_creatives import create_meta_ad_creative
 
-    st.subheader("🎨 Creative Generator")
+    st.subheader("Creative Generator")
 
-    product = st.text_input("Product", "Streetwear Hoodie")
+    product = st.text_input("Product / Offer", "Streetwear Hoodie")
     audience = st.text_input("Audience", "Streetwear fans 18–30")
     goal = st.selectbox("Goal", ["sales", "leads", "traffic"])
     tone = st.selectbox("Tone", ["bold", "friendly", "premium"])
-    platform = st.selectbox("Platform", ["meta", "tiktok", "youtube"])
+    platform_choice = st.selectbox("Platform", ["meta", "tiktok", "youtube"])
     use_ai = st.checkbox("Use AI (OpenAI)", value=True)
 
     if st.button("✨ Generate Creative"):
@@ -201,19 +192,14 @@ with tab_creative:
             audience=audience,
             goal=goal,
             tone=tone,
-            platform=platform,
+            platform=platform_choice,
             use_ai=use_ai,
         )
 
         st.session_state["last_creative"] = creative
 
         st.success("Creative generated")
-        st.markdown(f"### {creative['headline']}")
-        st.write(creative["primary_text"])
-
-        col1, col2 = st.columns(2)
-        col1.metric("CTA", creative["cta"])
-        col2.metric("Source", creative["source"].upper())
+        st.table(pd.DataFrame([creative]))
 
     st.divider()
     st.subheader("📤 Push Creative to Meta")
@@ -237,16 +223,20 @@ with tab_creative:
             )
 
             st.success("Meta Creative Created")
-
-            with st.expander("📦 Meta API Response"):
-                st.json(result)
+            st.json(result)
 
 # =================================================
 # 📣 CAMPAIGNS TAB
 # =================================================
 with tab_campaigns:
-    st.subheader("📣 Campaign Builder")
-    st.info("Meta campaign automation ready to wire.")
+    st.subheader("Campaign Builder")
+    st.info(
+        "Campaign hooks are ready.\n\n"
+        "Connect:\n"
+        "- app/campaigns/meta_campaigns.py\n"
+        "- app/utils/validators.py\n"
+        "- app/utils/rate_limits.py"
+    )
 
 # =================================================
 # 🧠 STRATEGY TAB
@@ -254,7 +244,7 @@ with tab_campaigns:
 with tab_strategy:
     from app.strategy.router import generate_strategy
 
-    st.subheader("🧠 Strategy Planner")
+    st.subheader("Budget & Strategy Planning")
 
     budget = st.number_input("Monthly Budget ($)", min_value=100, value=1000)
     objective = st.selectbox("Objective", ["awareness", "traffic", "sales"])
@@ -271,34 +261,28 @@ with tab_strategy:
 
         st.success("Strategy generated")
 
-        alloc_df = pd.DataFrame(
-            strategy["allocation"].items(),
-            columns=["Platform", "Budget ($)"]
-        )
-
         st.subheader("💰 Budget Allocation")
-        st.dataframe(alloc_df, use_container_width=True)
-        st.bar_chart(alloc_df.set_index("Platform"))
-
-        st.subheader("📊 Projections")
         st.dataframe(
-            pd.DataFrame(strategy["projections"]).T,
+            pd.DataFrame(
+                list(strategy["allocation"].items()),
+                columns=["Platform", "Budget ($)"]
+            ),
             use_container_width=True
         )
+
+        st.subheader("📊 Performance Projections")
+        st.json(strategy["projections"])
 
 # =================================================
 # 🧰 SYSTEM TAB
 # =================================================
-with tab_utils:
-    st.subheader("🧰 System Status")
+with tab_system:
+    st.subheader("System Status")
 
-    st.metric("Meta Connected", "Yes")
-    st.metric("Google Signed In", "Yes" if "google_user" in st.session_state else "No")
-    st.metric("Creative Cached", bool(st.session_state.get("last_creative")))
+    st.success("Application healthy")
+    st.write("Meta Connected:", True)
+    st.write("Google Connected:", bool(st.session_state.get("google_access_token")))
+    st.write("Ad Account:", st.session_state.get("ad_account_id"))
+    st.write("Creative Cached:", bool(st.session_state.get("last_creative")))
 
-    st.subheader("🔐 Environment")
-    st.write({
-        "OPENAI_API_KEY": bool(os.getenv("OPENAI_API_KEY")),
-        "YOUTUBE_API_KEY": bool(os.getenv("YOUTUBE_API_KEY")),
-        "GOOGLE_CLIENT_ID": bool(os.getenv("GOOGLE_CLIENT_ID")),
-    })
+    st.caption("Utilities active: logging, validators, rate limits")
