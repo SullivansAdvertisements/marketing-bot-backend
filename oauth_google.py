@@ -2,6 +2,9 @@ import os
 import requests
 from urllib.parse import urlencode
 
+# ==============================
+# ENV VARS (Streamlit Secrets)
+# ==============================
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
@@ -16,7 +19,13 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
 ]
 
-def google_login_url():
+# ==============================
+# LOGIN URL
+# ==============================
+def google_login_url() -> str:
+    if not GOOGLE_CLIENT_ID or not GOOGLE_REDIRECT_URI:
+        raise Exception("Google OAuth env vars missing")
+
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
@@ -25,9 +34,13 @@ def google_login_url():
         "access_type": "offline",
         "prompt": "consent",
     }
-    return "https://accounts.google.com/o/oauth2/v2/auth?...etc"
+
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
 
 
+# ==============================
+# CODE → TOKEN
+# ==============================
 def exchange_google_code_for_token(code: str) -> dict:
     data = {
         "client_id": GOOGLE_CLIENT_ID,
@@ -40,7 +53,7 @@ def exchange_google_code_for_token(code: str) -> dict:
     r = requests.post(GOOGLE_TOKEN_URL, data=data, timeout=10)
     token = r.json()
 
-    if "access_token" not in token:
-        raise Exception(f"Google OAuth failed: {token}")
+    if "error" in token:
+        raise Exception(f"Google OAuth error: {token}")
 
     return token
