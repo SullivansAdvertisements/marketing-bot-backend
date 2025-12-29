@@ -19,10 +19,7 @@ from oauth_meta import (
     exchange_code_for_token,
     fetch_ad_accounts,
 )
-from google_oauth import (
-    google_login_url,
-    exchange_google_code,
-)
+from google_oauth import google_login_url, exchange_google_code
 # =================================================
 # APP TITLE
 # =================================================
