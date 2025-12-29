@@ -28,9 +28,9 @@ exchange_google_code_for_token = None
 
 try:
     from google_oauth import (
-        google_login_url,
-        exchange_google_code_for_token,
-    )
+    google_login_url,
+    exchange_google_code_for_token,
+)
     GOOGLE_OAUTH_AVAILABLE = True
 except Exception:
     GOOGLE_OAUTH_AVAILABLE = False
