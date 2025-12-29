@@ -1,5 +1,16 @@
 import streamlit as st
-import pandas as pd
+
+from oauth_meta import (
+    meta_login_url,
+    exchange_code_for_token,
+    fetch_ad_accounts,
+)
+
+# ✅ Google OAuth imports — TOP LEVEL ONLY
+from oauth_google import (
+    google_login_url,
+    exchange_google_code_for_token,
+)
 
 # =================================================
 # MUST BE FIRST — MOBILE-FIRST
@@ -9,32 +20,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed",
 )
-
-# =================================================
-# META OAUTH (REQUIRED)
-# =================================================
-from oauth_meta import (
-    meta_login_url,
-    exchange_code_for_token,
-    fetch_ad_accounts,
-)
-
-# =================================================
-# GOOGLE OAUTH (OPTIONAL — SAFE)
-# =================================================
-GOOGLE_OAUTH_AVAILABLE = False
-google_login_url = None
-exchange_google_code_for_token = None
-
-try:
-from oauth_google import (
-    google_login_url,
-    exchange_google_code_for_token,
-)
-
-    GOOGLE_OAUTH_AVAILABLE = True
-except Exception:
-    GOOGLE_OAUTH_AVAILABLE = False
 
 # =================================================
 # APP TITLE
