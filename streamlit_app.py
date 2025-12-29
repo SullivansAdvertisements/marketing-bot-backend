@@ -19,8 +19,7 @@ from oauth_meta import (
     exchange_code_for_token,
     fetch_ad_accounts,
 )
-
-from app.auth.google_oauth import (
+from google_oauth import (
     google_login_url,
     exchange_google_code,
 )
