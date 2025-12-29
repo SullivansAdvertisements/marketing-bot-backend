@@ -11,15 +11,22 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# =================================================
-# CORE AUTH IMPORTS
-# =================================================
+# ================================
+# Meta OAuth (repo root)
+# ================================
 from oauth_meta import (
     meta_login_url,
     exchange_code_for_token,
     fetch_ad_accounts,
 )
-from google_oauth import google_login_url, exchange_google_code
+
+# ================================
+# Google OAuth (repo root)
+# ================================
+from google_oauth import (
+    google_login_url,
+    exchange_google_code_for_token,
+)
 # =================================================
 # APP TITLE
 # =================================================
