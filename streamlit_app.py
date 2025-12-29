@@ -27,10 +27,11 @@ google_login_url = None
 exchange_google_code_for_token = None
 
 try:
-    from google_oauth import (
+from oauth_google import (
     google_login_url,
     exchange_google_code_for_token,
 )
+
     GOOGLE_OAUTH_AVAILABLE = True
 except Exception:
     GOOGLE_OAUTH_AVAILABLE = False
@@ -63,26 +64,42 @@ if "meta_access_token" not in st.session_state:
 
 ACCESS_TOKEN = st.session_state["meta_access_token"]
 
+st.divider()
 st.subheader("Google Authentication")
 
-google_query = st.experimental_get_query_params()
+query = st.experimental_get_query_params()
 
-st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
+# -----------------------------
+# Login Button
+# -----------------------------
+try:
+    st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
+except Exception:
+    st.info("Google OAuth not configured yet.")
 
-if "code" in google_query and "google_access_token" not in st.session_state:
+# -----------------------------
+# Handle OAuth Callback
+# -----------------------------
+if "code" in query and "google_access_token" not in st.session_state:
     try:
-        token_data = exchange_google_code_for_token(google_query["code"][0])
-        st.session_state["google_access_token"] = token_data["access_token"]
+        token = exchange_google_code_for_token(query["code"][0])
+
+        st.session_state["google_access_token"] = token.get("access_token")
+        st.session_state["google_refresh_token"] = token.get("refresh_token")
+
         st.success("Google connected successfully")
+
     except Exception as e:
         st.error("Google OAuth failed")
         st.exception(e)
 
+# -----------------------------
+# Status Indicator
+# -----------------------------
 if "google_access_token" in st.session_state:
-    st.success("Google OAuth active")
+    st.success("Google account connected")
 else:
-    st.info("Google OAuth not connected yet")
-    
+    st.warning("Google not connected")
 # =================================================
 # FETCH AD ACCOUNTS
 # =================================================
