@@ -9,26 +9,19 @@ from oauth_meta import (
     fetch_ad_accounts,
 )
 
-# ================================
-# Google OAuth (SAFE)
-# ================================
-st.subheader("Google Authentication")
+# =================================================
+# GOOGLE OAUTH (SAFE OPTIONAL IMPORT)
+# =================================================
+GOOGLE_OAUTH_AVAILABLE = False
 
-if GOOGLE_OAUTH_AVAILABLE:
-    st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
-
-    if "google_code" in st.experimental_get_query_params():
-        try:
-            google_token = exchange_google_code_for_token(
-                st.experimental_get_query_params()["google_code"][0]
-            )
-            st.session_state["google_access_token"] = google_token
-            st.success("Google connected successfully")
-        except Exception as e:
-            st.error("Google OAuth failed")
-            st.exception(e)
-else:
-    st.info("Google OAuth not configured yet.")
+try:
+    from google_oauth import (
+        google_login_url,
+        exchange_google_code_for_token,
+    )
+    GOOGLE_OAUTH_AVAILABLE = True
+except Exception:
+    GOOGLE_OAUTH_AVAILABLE = False
     
 #==================================================
 # APP TITLE
