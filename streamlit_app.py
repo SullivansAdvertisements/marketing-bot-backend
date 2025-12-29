@@ -63,6 +63,26 @@ if "meta_access_token" not in st.session_state:
 
 ACCESS_TOKEN = st.session_state["meta_access_token"]
 
+st.subheader("Google Authentication")
+
+google_query = st.experimental_get_query_params()
+
+st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
+
+if "code" in google_query and "google_access_token" not in st.session_state:
+    try:
+        token_data = exchange_google_code_for_token(google_query["code"][0])
+        st.session_state["google_access_token"] = token_data["access_token"]
+        st.success("Google connected successfully")
+    except Exception as e:
+        st.error("Google OAuth failed")
+        st.exception(e)
+
+if "google_access_token" in st.session_state:
+    st.success("Google OAuth active")
+else:
+    st.info("Google OAuth not connected yet")
+    
 # =================================================
 # FETCH AD ACCOUNTS
 # =================================================
