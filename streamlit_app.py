@@ -29,6 +29,7 @@ if GOOGLE_OAUTH_AVAILABLE:
             st.exception(e)
 else:
     st.info("Google OAuth not configured yet.")
+    
 # APP TITLE
 # =================================================
 st.title("🚀 Marketing Bot")
