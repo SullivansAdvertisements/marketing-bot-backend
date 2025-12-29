@@ -25,7 +25,7 @@ def google_login_url():
         "access_type": "offline",
         "prompt": "consent",
     }
-    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+    return "https://accounts.google.com/o/oauth2/v2/auth?...etc"
 
 
 def exchange_google_code_for_token(code: str) -> dict:
