@@ -23,7 +23,6 @@ from google_oauth import (
     google_login_url,
     exchange_google_code,
 )
-
 # =================================================
 # APP TITLE
 # =================================================
