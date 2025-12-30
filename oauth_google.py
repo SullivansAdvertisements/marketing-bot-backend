@@ -21,7 +21,7 @@ def google_login_url() -> str:
         "prompt": "consent",
         "state": "google",
     }
-
+"state": "google"
     return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
 
 
