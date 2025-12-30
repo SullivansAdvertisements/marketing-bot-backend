@@ -9,18 +9,13 @@ META_REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app/"
 GRAPH_API_VERSION = "v19.0"
 GRAPH_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 
-def meta_login_url() -> str:
+def meta_login_url():
     params = {
         "client_id": META_APP_ID,
         "redirect_uri": META_REDIRECT_URI,
         "response_type": "code",
-        "scope": ",".join([
-            "ads_management",
-            "ads_read",
-            "business_management",
-            "public_profile",
-        ]),
         "state": "meta",
+        "scope": "ads_management,ads_read,business_management",
     }
     return f"https://www.facebook.com/{GRAPH_API_VERSION}/dialog/oauth?{urlencode(params)}"
 
