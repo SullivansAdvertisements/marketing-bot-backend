@@ -1,4 +1,3 @@
-from oauth_google import google_login_url, exchange_google_code_for_token
 import streamlit as st
 import pandas as pd
 
@@ -12,7 +11,7 @@ st.set_page_config(
 )
 
 # =================================================
-# META OAUTH (REQUIRED)
+# META OAUTH
 # =================================================
 from oauth_meta import (
     meta_login_url,
@@ -21,13 +20,9 @@ from oauth_meta import (
 )
 
 # =================================================
-# GOOGLE OAUTH (SAFE IMPORT)
+# GOOGLE OAUTH
 # =================================================
-from oauth_google import (
-    google_login_url,
-    exchange_google_code_for_token,
-)
-
+from oauth_google import google_login_url, exchange_google_code_for_token
 # =================================================
 # APP TITLE
 # =================================================
