@@ -27,6 +27,39 @@ from oauth_google import (
 # =================================================
 from oauth_meta import meta_login_url, exchange_code_for_token, fetch_ad_accounts
 from oauth_google import google_login_url, exchange_google_code_for_token
+import streamlit as st
+
+# 1️⃣ Page config (MUST be first Streamlit call)
+st.set_page_config(...)
+
+# 2️⃣ Imports
+from oauth_meta import ...
+from oauth_google import ...
+
+# 🔥 3️⃣ STEP 2 GOES HERE (OAuth handler)
+#    👇👇👇👇👇👇👇👇👇👇
+
+query = st.experimental_get_query_params()
+code = query.get("code", [None])[0]
+state = query.get("state", [None])[0]
+
+if code and state == "meta" and "meta_access_token" not in st.session_state:
+    token = exchange_code_for_token(code)
+    st.session_state["meta_access_token"] = token
+    st.experimental_set_query_params()
+
+if code and state == "google" and "google_access_token" not in st.session_state:
+    token = exchange_google_code_for_token(code)
+    st.session_state["google_access_token"] = token["access_token"]
+    st.experimental_set_query_params()
+
+# ⛔ NOTHING ABOVE THIS SHOULD USE st.title(), tabs, sidebar, etc.
+
+# 4️⃣ Now UI starts
+st.title("🚀 Marketing Bot")
+
+# 5️⃣ Tabs
+tab_auth, tab_research, tab_creative = st.tabs(...)
 # =================================================
 # APP TITLE
 # =================================================
