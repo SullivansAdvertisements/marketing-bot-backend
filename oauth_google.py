@@ -1,3 +1,30 @@
+import os
+import requests
+from urllib.parse import urlencode
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+
+GOOGLE_REDIRECT_URI = "https://sullys-beginning-v1.streamlit.app/"
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+
+def google_login_url() -> str:
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile https://www.googleapis.com/auth/youtube.readonly",
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": "google",
+    }
+
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+
 def exchange_google_code_for_token(code: str) -> dict:
     payload = {
         "client_id": GOOGLE_CLIENT_ID,
@@ -9,9 +36,6 @@ def exchange_google_code_for_token(code: str) -> dict:
 
     r = requests.post(GOOGLE_TOKEN_URL, data=payload, timeout=10)
     token = r.json()
-
-    # 👇 THIS IS CRITICAL
-    print("GOOGLE TOKEN RESPONSE:", token)
 
     if "error" in token:
         raise Exception(token)
