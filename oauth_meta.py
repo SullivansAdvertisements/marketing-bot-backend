@@ -48,7 +48,7 @@ def exchange_code_for_token(code: str) -> str:
         "redirect_uri": META_REDIRECT_URI,
         "code": code,
     }
-
+"state": "meta"
     r = requests.get(url, params=params, timeout=10)
     data = r.json()
 
