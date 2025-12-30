@@ -18,7 +18,6 @@ from oauth_meta import (
     exchange_code_for_token,
     fetch_ad_accounts,
 )
-
 from oauth_google import (
     google_login_url,
     exchange_google_code_for_token,
