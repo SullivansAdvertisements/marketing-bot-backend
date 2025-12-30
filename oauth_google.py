@@ -16,10 +16,10 @@ def google_login_url():
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": GOOGLE_SCOPE,
+        "state": "google",
+        "scope": " ".join(SCOPES),
         "access_type": "offline",
         "prompt": "consent",
-        "state": "google",
     }
     return f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
 
