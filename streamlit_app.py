@@ -29,13 +29,13 @@ oauth_code = query.get("code", [None])[0]
 oauth_state = query.get("state", [None])[0]
 
 # =================================================
-# 🔐 AUTH STATUS
+# AUTH STATUS
 # =================================================
 meta_connected = "meta_access_token" in st.session_state
 google_connected = "google_access_token" in st.session_state
 
 # =================================================
-# 🔵 META AUTH
+# 🔵 STEP 1: META AUTH
 # =================================================
 st.subheader("🔵 Step 1: Connect Meta Ads")
 
@@ -47,17 +47,16 @@ if not meta_connected:
             token = exchange_code_for_token(oauth_code)
             st.session_state["meta_access_token"] = token
             st.success("Meta connected successfully")
-            st.experimental_set_query_params()  # clear URL
+            st.experimental_set_query_params()
             st.rerun()
         except Exception as e:
             st.error("Meta OAuth failed")
             st.exception(e)
 
-if not meta_connected:
-    st.stop()
+# ❌ DO NOT STOP HERE
 
 # =================================================
-# 🟢 GOOGLE AUTH
+# 🟢 STEP 2: GOOGLE AUTH (ALWAYS RENDERS)
 # =================================================
 st.divider()
 st.subheader("🟢 Step 2: Connect Google")
@@ -70,23 +69,18 @@ if not google_connected:
             token = exchange_google_code_for_token(oauth_code)
             st.session_state["google_access_token"] = token["access_token"]
             st.success("Google connected successfully")
-            st.experimental_set_query_params()  # clear URL
+            st.experimental_set_query_params()
             st.rerun()
         except Exception as e:
             st.error("Google OAuth failed")
             st.exception(e)
 
-if not google_connected:
+# =================================================
+# 🚫 HARD GATE AFTER BOTH
+# =================================================
+if not meta_connected or not google_connected:
+    st.info("Connect both Meta and Google to unlock the app.")
     st.stop()
-
-# =================================================
-# ✅ AUTH COMPLETE
-# =================================================
-st.success("✅ Meta & Google connected — App unlocked")
-
-META_ACCESS_TOKEN = st.session_state["meta_access_token"]
-GOOGLE_ACCESS_TOKEN = st.session_state["google_access_token"]
-
 # =================================================
 # FETCH META AD ACCOUNTS
 # =================================================
