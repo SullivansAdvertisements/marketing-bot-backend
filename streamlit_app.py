@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # =================================================
-# MUST BE FIRST — MOBILE FRIENDLY
+# MUST BE FIRST
 # =================================================
 st.set_page_config(
     page_title="Marketing Bot",
@@ -11,17 +11,9 @@ st.set_page_config(
 )
 
 # =================================================
-# META OAUTH
+# IMPORTS
 # =================================================
-from oauth_meta import (
-    meta_login_url,
-    exchange_code_for_token,
-    fetch_ad_accounts,
-)
-
-# =================================================
-# GOOGLE OAUTH
-# =================================================
+from oauth_meta import meta_login_url, exchange_code_for_token, fetch_ad_accounts
 from oauth_google import google_login_url, exchange_google_code_for_token
 
 # =================================================
@@ -30,87 +22,98 @@ from oauth_google import google_login_url, exchange_google_code_for_token
 st.title("🚀 Marketing Bot")
 
 # =================================================
-# QUERY PARAMS
+# QUERY PARAMS (OAUTH)
 # =================================================
 query = st.experimental_get_query_params()
 oauth_code = query.get("code", [None])[0]
 oauth_state = query.get("state", [None])[0]
 
 # =================================================
+# 🔐 AUTH STATUS
+# =================================================
+meta_connected = "meta_access_token" in st.session_state
+google_connected = "google_access_token" in st.session_state
+
+# =================================================
 # 🔵 META AUTH
 # =================================================
-st.subheader("🔵 Meta Authentication")
+st.subheader("🔵 Step 1: Connect Meta Ads")
 
-st.markdown(f"[Connect Meta Ads]({meta_login_url()})")
+if not meta_connected:
+    st.markdown(f"[Connect Meta Ads]({meta_login_url()})")
 
-if oauth_code and oauth_state == "meta" and "meta_access_token" not in st.session_state:
-    try:
-        token = exchange_code_for_token(oauth_code)
-        st.session_state["meta_access_token"] = token
-        st.success("Meta connected successfully")
-    except Exception as e:
-        st.error("Meta OAuth failed")
-        st.exception(e)
+    if oauth_code and oauth_state == "meta":
+        try:
+            token = exchange_code_for_token(oauth_code)
+            st.session_state["meta_access_token"] = token
+            st.success("Meta connected successfully")
+            st.experimental_set_query_params()  # clear URL
+            st.rerun()
+        except Exception as e:
+            st.error("Meta OAuth failed")
+            st.exception(e)
 
-if "meta_access_token" not in st.session_state:
-    st.warning("Connect Meta Ads to unlock the app.")
+if not meta_connected:
     st.stop()
 
-META_ACCESS_TOKEN = st.session_state["meta_access_token"]
+# =================================================
+# 🟢 GOOGLE AUTH
+# =================================================
+st.divider()
+st.subheader("🟢 Step 2: Connect Google")
+
+if not google_connected:
+    st.markdown(f"[Sign in with Google]({google_login_url()})")
+
+    if oauth_code and oauth_state == "google":
+        try:
+            token = exchange_google_code_for_token(oauth_code)
+            st.session_state["google_access_token"] = token["access_token"]
+            st.success("Google connected successfully")
+            st.experimental_set_query_params()  # clear URL
+            st.rerun()
+        except Exception as e:
+            st.error("Google OAuth failed")
+            st.exception(e)
+
+if not google_connected:
+    st.stop()
 
 # =================================================
-# FETCH AD ACCOUNTS
+# ✅ AUTH COMPLETE
+# =================================================
+st.success("✅ Meta & Google connected — App unlocked")
+
+META_ACCESS_TOKEN = st.session_state["meta_access_token"]
+GOOGLE_ACCESS_TOKEN = st.session_state["google_access_token"]
+
+# =================================================
+# FETCH META AD ACCOUNTS
 # =================================================
 accounts_response = fetch_ad_accounts(META_ACCESS_TOKEN)
 accounts = accounts_response.get("data", [])
 
 if not accounts:
-    st.error("No ad accounts found.")
+    st.error("No Meta ad accounts found.")
     st.stop()
 
-account_df = pd.DataFrame(accounts)[["id", "name"]]
-account_df["clean_id"] = account_df["id"].str.replace("act_", "")
+df = pd.DataFrame(accounts)[["id", "name"]]
+df["clean_id"] = df["id"].str.replace("act_", "")
 
-selected_row = st.selectbox(
-    "Active Ad Account",
-    account_df["name"]
-)
-
-selected_account_id = account_df.loc[
-    account_df["name"] == selected_row, "clean_id"
+selected_account = st.selectbox("Active Meta Ad Account", df["name"])
+st.session_state["ad_account_id"] = df.loc[
+    df["name"] == selected_account, "clean_id"
 ].iloc[0]
 
-st.session_state["ad_account_id"] = selected_account_id
-
 # =================================================
-# 🟢 GOOGLE AUTH (SAFE + ISOLATED)
-# =================================================
-st.divider()
-st.subheader("🟢 Google Authentication")
-
-try:
-    st.markdown(f"[Sign in with Google]({google_login_url()})")
-
-    if oauth_code and oauth_state == "google" and "google_access_token" not in st.session_state:
-        try:
-            token = exchange_google_code_for_token(oauth_code)
-            st.session_state["google_access_token"] = token["access_token"]
-            st.success("Google connected successfully")
-        except Exception as e:
-            st.error("Google OAuth failed")
-            st.exception(e)
-
-except Exception:
-    st.info("Google OAuth not configured yet.")
-# =================================================
-# MAIN TABS
+# MAIN APP TABS (ONLY LOADS NOW)
 # =================================================
 tab_research, tab_creative, tab_strategy, tab_system = st.tabs(
     ["🔍 Research", "🎨 Creative", "🧠 Strategy", "🧰 System"]
 )
 
 # =================================================
-# 🔍 RESEARCH TAB
+# 🔍 RESEARCH
 # =================================================
 with tab_research:
     from app.research.router import run_research
@@ -121,7 +124,6 @@ with tab_research:
         "Platform",
         ["google_trends", "youtube", "meta_ads"]
     )
-
     keyword = st.text_input("Keyword")
     geo = st.selectbox("Country", ["US", "CA", "GB", "AU"])
     timeframe = st.selectbox(
@@ -130,35 +132,24 @@ with tab_research:
     )
 
     if st.button("Run Research"):
-        if not keyword:
-            st.warning("Enter a keyword")
+        results = run_research(
+            platform=platform,
+            keyword=keyword,
+            geo=geo,
+            timeframe=timeframe,
+            access_token=GOOGLE_ACCESS_TOKEN,
+        )
+
+        if isinstance(results, list):
+            st.dataframe(pd.DataFrame(results), use_container_width=True)
         else:
-            try:
-                results = run_research(
-                    platform=platform,
-                    keyword=keyword,
-                    geo=geo,
-                    timeframe=timeframe,
-                    access_token=st.session_state.get("google_access_token"),
-                )
-
-                if isinstance(results, list) and results:
-                    st.dataframe(pd.DataFrame(results), use_container_width=True)
-                elif isinstance(results, dict):
-                    st.dataframe(pd.DataFrame([results]))
-                else:
-                    st.info("No data returned")
-
-            except Exception as e:
-                st.error("Research failed")
-                st.exception(e)
+            st.json(results)
 
 # =================================================
-# 🎨 CREATIVE TAB
+# 🎨 CREATIVE
 # =================================================
 with tab_creative:
     from app.creative.router import generate_creative
-    from app.creative.meta_creatives import create_meta_ad_creative
 
     st.subheader("Creative Generator")
 
@@ -180,32 +171,8 @@ with tab_creative:
         st.session_state["creative"] = creative
         st.dataframe(pd.DataFrame([creative]))
 
-    st.divider()
-    st.subheader("Push Creative to Meta")
-
-    page_id = st.text_input("Facebook Page ID")
-    destination_url = st.text_input("Destination URL")
-
-    if st.button("Create Meta Creative"):
-        creative = st.session_state.get("creative")
-
-        if not creative:
-            st.warning("Generate creative first")
-        else:
-            result = create_meta_ad_creative(
-                access_token=META_ACCESS_TOKEN,
-                ad_account_id=selected_account_id,
-                page_id=page_id,
-                headline=creative["headline"],
-                primary_text=creative["primary_text"],
-                destination_url=destination_url,
-            )
-
-            st.success("Meta creative created")
-            st.json(result)
-
 # =================================================
-# 🧠 STRATEGY TAB
+# 🧠 STRATEGY
 # =================================================
 with tab_strategy:
     from app.strategy.router import generate_strategy
@@ -231,12 +198,11 @@ with tab_strategy:
         )
 
 # =================================================
-# 🧰 SYSTEM TAB
+# 🧰 SYSTEM
 # =================================================
 with tab_system:
     st.subheader("System Status")
 
-    st.write("Meta Connected:", True)
-    st.write("Google Connected:", bool(st.session_state.get("google_access_token")))
+    st.write("Meta Connected:", meta_connected)
+    st.write("Google Connected:", google_connected)
     st.write("Ad Account:", st.session_state.get("ad_account_id"))
-    st.write("Creative Cached:", bool(st.session_state.get("creative")))
