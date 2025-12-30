@@ -23,6 +23,7 @@ from oauth_meta import (
 # GOOGLE OAUTH
 # =================================================
 from oauth_google import google_login_url, exchange_google_code_for_token
+
 # =================================================
 # APP TITLE
 # =================================================
@@ -32,17 +33,19 @@ st.title("🚀 Marketing Bot")
 # QUERY PARAMS
 # =================================================
 query = st.experimental_get_query_params()
+oauth_code = query.get("code", [None])[0]
+oauth_state = query.get("state", [None])[0]
 
 # =================================================
-# META AUTH
+# 🔵 META AUTH
 # =================================================
 st.subheader("🔵 Meta Authentication")
 
 st.markdown(f"[Connect Meta Ads]({meta_login_url()})")
 
-if "code" in query and "meta_access_token" not in st.session_state:
+if oauth_code and oauth_state == "meta" and "meta_access_token" not in st.session_state:
     try:
-        token = exchange_code_for_token(query["code"][0])
+        token = exchange_code_for_token(oauth_code)
         st.session_state["meta_access_token"] = token
         st.success("Meta connected successfully")
     except Exception as e:
@@ -80,18 +83,17 @@ selected_account_id = account_df.loc[
 st.session_state["ad_account_id"] = selected_account_id
 
 # =================================================
-# GOOGLE AUTH (SAFE — NO CRASH)
+# 🟢 GOOGLE AUTH (SAFE + ISOLATED)
 # =================================================
 st.divider()
 st.subheader("🟢 Google Authentication")
 
 try:
-    google_login = google_login_url()
-    st.markdown(f"[Sign in with Google]({google_login})")
+    st.markdown(f"[Sign in with Google]({google_login_url()})")
 
-    if "code" in query and "google_access_token" not in st.session_state:
+    if oauth_code and oauth_state == "google" and "google_access_token" not in st.session_state:
         try:
-            token = exchange_google_code_for_token(query["code"][0])
+            token = exchange_google_code_for_token(oauth_code)
             st.session_state["google_access_token"] = token["access_token"]
             st.success("Google connected successfully")
         except Exception as e:
@@ -100,7 +102,6 @@ try:
 
 except Exception:
     st.info("Google OAuth not configured yet.")
-
 # =================================================
 # MAIN TABS
 # =================================================
