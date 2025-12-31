@@ -26,7 +26,21 @@ for key in [
 ]:
     if key not in st.session_state:
         st.session_state[key] = None
+query = st.query_params
 
+if "code" in query and "state" in query:
+    try:
+        if query["state"] == "meta" and not st.session_state["meta_token"]:
+            st.session_state["meta_token"] = exchange_meta_code_for_token(query["code"])
+            st.success("✅ Meta connected")
+
+        elif query["state"] == "google" and not st.session_state["google_token"]:
+            st.session_state["google_token"] = exchange_google_code_for_token(query["code"])
+            st.success("✅ Google connected")
+
+    except Exception as e:
+        st.error("OAuth failed")
+        st.exception(e)
 # =================================================
 # HANDLE OAUTH CALLBACK (SAFE)
 # =================================================
