@@ -1,146 +1,125 @@
 import streamlit as st
-import pandas as pd
 
-from oauth_meta import meta_login_url, exchange_meta_code_for_token
-from oauth_google import google_login_url, exchange_google_code_for_token
-
-# ============================================================
+# ============================
 # PAGE CONFIG
-# ============================================================
+# ============================
 st.set_page_config(
     page_title="Marketing Bot",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-st.title("🚀 Marketing Bot")
-st.caption("Research, campaigns, and strategy. Connect platforms anytime.")
+# ============================
+# AUTH IMPORTS
+# ============================
+from oauth_meta import meta_login_url, exchange_meta_code_for_token
+from oauth_google import google_login_url, exchange_google_code_for_token
 
-# ============================================================
-# SESSION STATE INIT (NON-BLOCKING)
-# ============================================================
-for key in [
-    "meta_token",
-    "google_token",
-]:
+# ============================
+# MODULE ROUTERS
+# ============================
+from app.research.router import render as research_render
+from app.strategy.router import render as strategy_render
+from app.creative.router import render as creative_render
+from app.campaigns.router import render as campaigns_render
+
+# ============================
+# SESSION STATE
+# ============================
+for key in ["meta_token", "google_token"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
-# ============================================================
-# HANDLE OAUTH CALLBACKS (BACKGROUND ONLY)
-# ============================================================
+# ============================
+# HANDLE OAUTH CALLBACK (ONCE)
+# ============================
 query = st.query_params
 
 if "code" in query and "state" in query:
     try:
-        if query["state"] == "meta" and st.session_state["meta_token"] is None:
-            token = exchange_meta_code_for_token(query["code"])
-            st.session_state["meta_token"] = token
-            st.success("✅ Meta connected")
+        if query["state"] == "meta" and not st.session_state.meta_token:
+            st.session_state.meta_token = exchange_meta_code_for_token(query["code"])
+            st.success("Meta connected")
 
-        if query["state"] == "google" and st.session_state["google_token"] is None:
-            token = exchange_google_code_for_token(query["code"])
-            st.session_state["google_token"] = token
-            st.success("✅ Google connected")
+        if query["state"] == "google" and not st.session_state.google_token:
+            st.session_state.google_token = exchange_google_code_for_token(query["code"])
+            st.success("Google connected")
+
+        st.query_params.clear()
 
     except Exception as e:
-        st.error("OAuth failed")
-        st.exception(e)
+        st.error(f"Auth error: {e}")
 
-    # ✅ CLEAR URL WITHOUT RELOAD BREAKING STATE
-    st.query_params.clear()
+# ============================
+# HEADER
+# ============================
+st.title("🚀 Marketing Bot")
+st.caption("Research → Strategy → Creative → Campaigns")
 
-# ============================================================
-# CONNECTION STATUS (INFORMATION ONLY)
-# ============================================================
-st.subheader("🔐 Platform Connections")
+# ============================
+# PLATFORM STATUS
+# ============================
+c1, c2 = st.columns(2)
 
-col1, col2 = st.columns(2)
+with c1:
+    st.subheader("Meta Ads")
+    if st.session_state.meta_token:
+        st.success("Connected")
+        st.markdown(f"[Reconnect Meta]({meta_login_url(state='meta')})")
+    else:
+        st.warning("Not connected")
+        st.markdown(f"[Connect Meta Ads]({meta_login_url(state='meta')})")
 
-with col1:
-    st.markdown("**Meta Ads**")
-    st.write("Connected" if st.session_state["meta_token"] else "Not connected")
-    if not st.session_state["meta_token"]:
-        st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url(state='meta')})")
-
-with col2:
-    st.markdown("**Google Ads**")
-    st.write("Connected" if st.session_state["google_token"] else "Not connected")
-    if not st.session_state["google_token"]:
-        st.markdown(f"[🟢 Sign in with Google]({google_login_url(state='google')})")
+with c2:
+    st.subheader("Google Ads")
+    if st.session_state.google_token:
+        st.success("Connected")
+        st.markdown(f"[Reconnect Google]({google_login_url(state='google')})")
+    else:
+        st.warning("Not connected")
+        st.markdown(f"[Sign in with Google]({google_login_url(state='google')})")
 
 st.divider()
 
-# ============================================================
-# APP TABS (ALWAYS AVAILABLE)
-# ============================================================
+# ============================
+# MAIN TABS (REAL MODULES)
+# ============================
 tabs = st.tabs([
     "🔍 Research",
+    "📊 Strategy",
     "🎨 Creative",
-    "📊 Campaigns",
-    "🧠 Strategy",
-    "⚙️ System",
+    "📣 Campaigns",
 ])
 
-# ============================================================
-# RESEARCH TAB
-# ============================================================
 with tabs[0]:
-    st.subheader("Market Research")
-
-    platform = st.selectbox(
-        "Platform",
-        ["Google", "Meta"],
+    research_render(
+        meta_token=st.session_state.meta_token,
+        google_token=st.session_state.google_token
     )
 
-    keyword = st.text_input("Keyword")
-    country = st.selectbox("Country", ["US", "CA", "UK"])
-
-    st.button("Run Research")
-
-    st.info(
-        "Google or Meta can be connected independently. "
-        "Research works even if only one platform is connected."
-    )
-
-# ============================================================
-# CREATIVE TAB
-# ============================================================
 with tabs[1]:
-    st.subheader("Creative Generator")
-    st.text_area("Ad Concept")
-    st.button("Generate Creatives")
+    strategy_render(
+        meta_token=st.session_state.meta_token,
+        google_token=st.session_state.google_token
+    )
 
-# ============================================================
-# CAMPAIGNS TAB
-# ============================================================
 with tabs[2]:
-    st.subheader("Campaign Builder")
+    creative_render(
+        meta_token=st.session_state.meta_token,
+        google_token=st.session_state.google_token
+    )
 
-    if not st.session_state["meta_token"] and not st.session_state["google_token"]:
-        st.warning("Connect at least one platform to launch campaigns.")
-
-    st.button("Create Campaign")
-
-# ============================================================
-# STRATEGY TAB
-# ============================================================
 with tabs[3]:
-    st.subheader("Strategy")
-    st.write("Cross-platform planning and budget allocation.")
+    campaigns_render(
+        meta_token=st.session_state.meta_token,
+        google_token=st.session_state.google_token
+    )
 
-# ============================================================
-# SYSTEM TAB
-# ============================================================
-with tabs[4]:
-    st.subheader("System Status")
-
+# ============================
+# DEBUG (OPTIONAL)
+# ============================
+with st.expander("Debug"):
     st.json({
-        "meta_connected": bool(st.session_state["meta_token"]),
-        "google_connected": bool(st.session_state["google_token"]),
+        "meta_connected": bool(st.session_state.meta_token),
+        "google_connected": bool(st.session_state.google_token),
     })
-
-    if st.button("Reset Connections"):
-        st.session_state["meta_token"] = None
-        st.session_state["google_token"] = None
-        st.success("Connections cleared")
