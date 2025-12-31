@@ -34,33 +34,35 @@ st.title("🚀 Marketing Bot")
 # =================================================
 query = st.query_params
 
-# =================================================
-# HANDLE OAUTH CALLBACKS (SAFE + STATE-AWARE)
-# =================================================
-if "code" in query and "state" in query:
-    code = query["code"]
-    state = query["state"]
+# -------------------------------
+# META CALLBACK
+# -------------------------------
+if (
+    "code" in query
+    and query.get("state") == "meta"
+    and "meta_access_token" not in st.session_state
+):
+    try:
+        from oauth_meta import exchange_code_for_token
+        token = exchange_code_for_token(query["code"])
+        st.session_state["meta_access_token"] = token
+    except Exception as e:
+        st.session_state["meta_error"] = str(e)
 
-    # -------- META CALLBACK --------
-    if state == "meta" and "meta_access_token" not in st.session_state:
-        try:
-            token = exchange_code_for_token(code)
-            st.session_state["meta_access_token"] = token
-            st.success("✅ Meta connected")
-        except Exception as e:
-            st.error("❌ Meta OAuth failed")
-            st.exception(e)
-
-    # -------- GOOGLE CALLBACK --------
-    if state == "google" and "google_access_token" not in st.session_state:
-        try:
-            token = exchange_google_code_for_token(code)
-            st.session_state["google_access_token"] = token["access_token"]
-            st.success("✅ Google connected")
-        except Exception as e:
-            st.error("❌ Google OAuth failed")
-            st.exception(e)
-
+# -------------------------------
+# GOOGLE CALLBACK
+# -------------------------------
+if (
+    "code" in query
+    and query.get("state") == "google"
+    and "google_access_token" not in st.session_state
+):
+    try:
+        from oauth_google import exchange_google_code_for_token
+        token = exchange_google_code_for_token(query["code"])
+        st.session_state["google_access_token"] = token["access_token"]
+    except Exception as e:
+        st.session_state["google_error"] = str(e)
 # =================================================
 # CONNECTION STATUS
 # =================================================
