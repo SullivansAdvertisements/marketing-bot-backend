@@ -1,61 +1,123 @@
-"""
-Strategy Router
----------------
-Thin interface for Streamlit.
-"""
+# app/strategy/router.py
 
-from typing import Dict
+import streamlit as st
+import pandas as pd
 
-from .budget_allocator import allocate_budget
-from .performance_estimator import estimate_results
+from app.strategy.budget_allocator import allocate_budget
+from app.strategy.performance_estimator import estimate_performance
 
 
-def generate_strategy(
-    total_budget: float,
-    objective: str,
-    risk_level: str,
-    average_order_value: float,
-) -> Dict:
+def render():
+    st.header("📈 Strategy & Budget Optimization")
+
+    # ----------------------------
+    # PLATFORM AVAILABILITY
+    # ----------------------------
+    meta_connected = bool(st.session_state.get("meta_token"))
+    google_connected = bool(st.session_state.get("google_token"))
+
+    st.subheader("Connected Platforms")
+
+    cols = st.columns(2)
+    with cols[0]:
+        st.metric("Meta Ads", "Connected" if meta_connected else "Not connected")
+    with cols[1]:
+        st.metric("Google Ads", "Connected" if google_connected else "Not connected")
+
+    available_platforms = []
+    if meta_connected:
+        available_platforms.append("Meta")
+    if google_connected:
+        available_platforms.append("Google")
+
+    if not available_platforms:
+        st.warning("Connect at least one platform to run strategy optimization.")
+        return
+
+    # ----------------------------
+    # USER INPUTS
+    # ----------------------------
+    st.subheader("Strategy Inputs")
+
+    platforms = st.multiselect(
+        "Choose platforms to include",
+        available_platforms,
+        default=available_platforms,
+    )
+
+    total_budget = st.number_input(
+        "Total Monthly Budget ($)",
+        min_value=100,
+        value=2000,
+        step=100,
+    )
+
+    objective = st.selectbox(
+        "Optimization Objective",
+        ["Maximize Conversions", "Maximize ROAS", "Maximize Clicks"],
+    )
+
+    run = st.button("🚀 Run Optimization")
+
+    if not run:
+        return
+
+    if not platforms:
+        st.error("Select at least one platform.")
+        return
+
+    # ----------------------------
+    # PERFORMANCE ESTIMATION
+    # ----------------------------
+    st.subheader("📊 Performance Estimates")
+
+    estimates = []
+
+    if "Meta" in platforms:
+        meta_estimate = estimate_performance(
+            platform="meta",
+            token=st.session_state["meta_token"],
+            objective=objective,
+            budget=total_budget,
+        )
+        estimates.append(meta_estimate)
+
+    if "Google" in platforms:
+        google_estimate = estimate_performance(
+            platform="google",
+            token=st.session_state["google_token"],
+            objective=objective,
+            budget=total_budget,
+        )
+        estimates.append(google_estimate)
+
+    estimates_df = pd.DataFrame(estimates)
+    st.dataframe(estimates_df, use_container_width=True)
+
+    # ----------------------------
+    # BUDGET ALLOCATION
+    # ----------------------------
+    st.subheader("💰 Optimized Budget Allocation")
 
     allocation = allocate_budget(
         total_budget=total_budget,
+        platform_estimates=estimates,
         objective=objective,
-        risk_level=risk_level,
     )
 
-    projections = {}
+    allocation_df = pd.DataFrame(allocation)
+    st.dataframe(allocation_df, use_container_width=True)
 
-    for platform, budget in allocation.items():
-        try:
-            projections[platform] = estimate_results(
-                platform=platform,
-                budget=budget,
-                average_order_value=average_order_value,
-            )
-        except Exception:
-            projections[platform] = {"note": "No benchmark available"}
+    # ----------------------------
+    # FINAL STRATEGY SUMMARY
+    # ----------------------------
+    st.subheader("🧠 Strategy Summary")
 
-    return {
-        "allocation": allocation,
-        "projections": projections,
-        "assumptions": {
-            "objective": objective,
-            "risk_level": risk_level,
-            "aov": average_order_value,
-        },
-    }
-    
-def render(meta_token=None, google_token=None):
-    import streamlit as st
-    import pandas as pd
-
-    st.subheader("Market Research")
-
-    query = st.text_input("Search market / keyword")
-
-    if query:
-        df = pd.DataFrame({
-            "Metric": ["Search Volume", "Competition", "CPC"],
-            "Value": ["High", "Medium", "$1.45"]
-        })
-        st.dataframe(df, use_container_width=True)
+    for row in allocation:
+        st.markdown(
+            f"""
+            **{row['platform']}**
+            - Budget: **${row['budget']:,}**
+            - Expected Results: **{row['expected_result']}**
+            """
+        )
