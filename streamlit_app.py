@@ -10,19 +10,34 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# =================================================
-# OAUTH IMPORTS
-# =================================================
-from oauth_meta import (
-    meta_login_url,
-    exchange_code_for_token,
-    fetch_ad_accounts,
-)
+query = st.query_params
 
-from oauth_google import (
-    google_login_url,
-    exchange_google_code_for_token,
-)
+# ---- Initialize once ----
+st.session_state.setdefault("meta_access_token", None)
+st.session_state.setdefault("google_access_token", None)
+
+# ---- OAuth callback ----
+if "code" in query and "state" in query:
+    code = query["code"]
+    state = query["state"]
+
+    # META
+    if state == "meta" and st.session_state["meta_access_token"] is None:
+        from oauth_meta import exchange_code_for_token
+        try:
+            meta_token = exchange_code_for_token(code)
+            st.session_state["meta_access_token"] = meta_token
+        except Exception as e:
+            st.session_state["meta_error"] = str(e)
+
+    # GOOGLE
+    if state == "google" and st.session_state["google_access_token"] is None:
+        from oauth_google import exchange_google_code_for_token
+        try:
+            google_token = exchange_google_code_for_token(code)
+            st.session_state["google_access_token"] = google_token["access_token"]
+        except Exception as e:
+            st.session_state["google_error"] = str(e)
 
 # =================================================
 # APP HEADER
