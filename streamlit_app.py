@@ -1,125 +1,140 @@
 import streamlit as st
 
-# ============================
-# PAGE CONFIG
-# ============================
+# =================================================
+# STREAMLIT CONFIG (MUST BE FIRST)
+# =================================================
 st.set_page_config(
     page_title="Marketing Bot",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# ============================
-# AUTH IMPORTS
-# ============================
-from oauth_meta import meta_login_url, exchange_meta_code_for_token
-from oauth_google import google_login_url, exchange_google_code_for_token
+# =================================================
+# SAFE SESSION STATE BOOTSTRAP
+# =================================================
+DEFAULT_STATE = {
+    "meta_token": None,
+    "google_token": None,
+    "active_tab": "Research",
+}
 
-# ============================
-# MODULE ROUTERS
-# ============================
+for k, v in DEFAULT_STATE.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# =================================================
+# SAFE ROUTER IMPORTS (NO SIDE EFFECTS)
+# =================================================
 from app.research.router import render as research_render
-from app.strategy.router import render as strategy_render
-from app.creative.router import render as creative_render
 from app.campaigns.router import render as campaigns_render
+from app.strategy.router import render as strategy_render
+from app.creative.router import generate_creative
 
-# ============================
-# SESSION STATE
-# ============================
-for key in ["meta_token", "google_token"]:
-    if key not in st.session_state:
-        st.session_state[key] = None
-
-# ============================
-# HANDLE OAUTH CALLBACK (ONCE)
-# ============================
-query = st.query_params
-
-if "code" in query and "state" in query:
-    try:
-        if query["state"] == "meta" and not st.session_state.meta_token:
-            st.session_state.meta_token = exchange_meta_code_for_token(query["code"])
-            st.success("Meta connected")
-
-        if query["state"] == "google" and not st.session_state.google_token:
-            st.session_state.google_token = exchange_google_code_for_token(query["code"])
-            st.success("Google connected")
-
-        st.query_params.clear()
-
-    except Exception as e:
-        st.error(f"Auth error: {e}")
-
-# ============================
-# HEADER
-# ============================
+# =================================================
+# APP HEADER
+# =================================================
 st.title("🚀 Marketing Bot")
-st.caption("Research → Strategy → Creative → Campaigns")
+st.caption("Research → Strategy → Campaign Execution")
 
-# ============================
-# PLATFORM STATUS
-# ============================
-c1, c2 = st.columns(2)
+# =================================================
+# GLOBAL CONNECTION STATUS (NON-BLOCKING)
+# =================================================
+with st.expander("🔐 Platform Connection Status", expanded=False):
+    col1, col2 = st.columns(2)
 
-with c1:
-    st.subheader("Meta Ads")
-    if st.session_state.meta_token:
-        st.success("Connected")
-        st.markdown(f"[Reconnect Meta]({meta_login_url(state='meta')})")
-    else:
-        st.warning("Not connected")
-        st.markdown(f"[Connect Meta Ads]({meta_login_url(state='meta')})")
+    with col1:
+        if st.session_state.meta_token:
+            st.success("Meta Ads Connected")
+        else:
+            st.warning("Meta Ads Not Connected")
 
-with c2:
-    st.subheader("Google Ads")
-    if st.session_state.google_token:
-        st.success("Connected")
-        st.markdown(f"[Reconnect Google]({google_login_url(state='google')})")
-    else:
-        st.warning("Not connected")
-        st.markdown(f"[Sign in with Google]({google_login_url(state='google')})")
+    with col2:
+        if st.session_state.google_token:
+            st.success("Google Ads Connected")
+        else:
+            st.warning("Google Ads Not Connected")
 
-st.divider()
-
-# ============================
-# MAIN TABS (REAL MODULES)
-# ============================
+# =================================================
+# MAIN NAVIGATION (MOBILE SAFE)
+# =================================================
 tabs = st.tabs([
-    "🔍 Research",
-    "📊 Strategy",
-    "🎨 Creative",
+    "🔎 Research",
+    "📈 Strategy",
     "📣 Campaigns",
+    "🎨 Creative",
 ])
 
+# =================================================
+# TAB — RESEARCH
+# =================================================
 with tabs[0]:
-    research_render(
-        meta_token=st.session_state.meta_token,
-        google_token=st.session_state.google_token
-    )
+    try:
+        research_render()
+    except Exception as e:
+        st.error("Research module failed to load.")
+        st.exception(e)
 
+# =================================================
+# TAB — STRATEGY
+# =================================================
 with tabs[1]:
-    strategy_render(
-        meta_token=st.session_state.meta_token,
-        google_token=st.session_state.google_token
-    )
+    try:
+        strategy_render()
+    except Exception as e:
+        st.error("Strategy module failed to load.")
+        st.exception(e)
 
+# =================================================
+# TAB — CAMPAIGNS
+# =================================================
 with tabs[2]:
-    creative_render(
-        meta_token=st.session_state.meta_token,
-        google_token=st.session_state.google_token
-    )
+    try:
+        campaigns_render()
+    except Exception as e:
+        st.error("Campaigns module failed to load.")
+        st.exception(e)
 
+# =================================================
+# TAB — CREATIVE (AI)
+# =================================================
 with tabs[3]:
-    campaigns_render(
-        meta_token=st.session_state.meta_token,
-        google_token=st.session_state.google_token
-    )
+    st.subheader("🎨 Creative Generator")
 
-# ============================
-# DEBUG (OPTIONAL)
-# ============================
-with st.expander("Debug"):
-    st.json({
-        "meta_connected": bool(st.session_state.meta_token),
-        "google_connected": bool(st.session_state.google_token),
-    })
+    with st.form("creative_form"):
+        product = st.text_input("Product / Offer")
+        audience = st.text_input("Target Audience")
+        goal = st.selectbox(
+            "Goal",
+            ["Conversions", "Leads", "Traffic", "Awareness"],
+        )
+        tone = st.selectbox(
+            "Tone",
+            ["bold", "luxury", "aggressive", "minimal"],
+        )
+        platform = st.selectbox(
+            "Platform",
+            ["meta", "google", "tiktok"],
+        )
+
+        submitted = st.form_submit_button("Generate Creative")
+
+    if submitted and product and audience:
+        creative = generate_creative(
+            product=product,
+            audience=audience,
+            goal=goal,
+            tone=tone,
+            platform=platform,
+            use_ai=True,
+        )
+
+        st.subheader("🧠 AI Output")
+
+        st.table([
+            {"Field": "Headline", "Value": creative["headline"]},
+            {"Field": "Primary Text", "Value": creative["primary_text"]},
+            {"Field": "CTA", "Value": creative["cta"]},
+            {"Field": "Platform", "Value": creative["platform"]},
+            {"Field": "Source", "Value": creative["source"]},
+        ])
