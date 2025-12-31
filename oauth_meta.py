@@ -1,6 +1,9 @@
 import os
 from urllib.parse import urlencode
 
+# ===== META OAUTH CONSTANTS (REQUIRED) =====
+META_AUTH_URL = "https://www.facebook.com/v18.0/dialog/oauth"
+
 META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
@@ -10,7 +13,6 @@ META_SCOPES = [
     "ads_management",
     "business_management",
 ]
-
 def meta_login_url(state: str = "meta"):
     params = {
         "client_id": META_APP_ID,
