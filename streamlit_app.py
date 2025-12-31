@@ -26,7 +26,7 @@ for k, v in DEFAULT_STATE.items():
 # =================================================
 # SAFE ROUTER IMPORTS (NO SIDE EFFECTS)
 # =================================================
-from app.research.router import render as research_render
+from research.router import render as research_render
 from app.campaigns.router import render as campaigns_render
 from app.strategy.router import render as strategy_render
 from app.creative.router import generate_creative
