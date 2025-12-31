@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # =================================================
-# IMPORT OAUTH MODULES
+# OAUTH IMPORTS (ROOT FILES)
 # =================================================
 from oauth_meta import (
     meta_login_url,
@@ -25,21 +25,23 @@ from oauth_google import (
 )
 
 # =================================================
-# APP TITLE
+# APP HEADER
 # =================================================
 st.title("🚀 Marketing Bot")
-
 st.caption(
-    "Connect Meta and Google to unlock research, creatives, campaigns, and strategy — "
-    "you can use either or both at the same time."
+    "Research, creatives, campaigns, and strategy. "
+    "You can connect Meta and Google in any order."
 )
 
 # =================================================
-# SESSION STATE INIT
+# SESSION STATE INIT (CRITICAL)
 # =================================================
 st.session_state.setdefault("meta_access_token", None)
 st.session_state.setdefault("google_access_token", None)
 st.session_state.setdefault("ad_account_id", None)
+st.session_state.setdefault("active_tab", "Research")
+st.session_state.setdefault("research_df", None)
+st.session_state.setdefault("last_keyword", "")
 
 # =================================================
 # READ QUERY PARAMS
@@ -47,28 +49,28 @@ st.session_state.setdefault("ad_account_id", None)
 query = st.query_params
 
 # =================================================
-# OAUTH CALLBACK HANDLER (SAFE)
+# OAUTH CALLBACK HANDLER (STATE-AWARE, ONCE)
 # =================================================
 if "code" in query and "state" in query:
     code = query["code"]
     state = query["state"]
 
-    # META
+    # ---- META CALLBACK ----
     if state == "meta" and st.session_state["meta_access_token"] is None:
         try:
-            token = exchange_code_for_token(code)
-            st.session_state["meta_access_token"] = token
-            st.success("✅ Meta connected successfully")
+            meta_token = exchange_code_for_token(code)
+            st.session_state["meta_access_token"] = meta_token
+            st.success("✅ Meta connected")
         except Exception as e:
             st.error("❌ Meta OAuth failed")
             st.exception(e)
 
-    # GOOGLE
+    # ---- GOOGLE CALLBACK ----
     if state == "google" and st.session_state["google_access_token"] is None:
         try:
-            token = exchange_google_code_for_token(code)
-            st.session_state["google_access_token"] = token["access_token"]
-            st.success("✅ Google connected successfully")
+            google_token = exchange_google_code_for_token(code)
+            st.session_state["google_access_token"] = google_token["access_token"]
+            st.success("✅ Google connected")
         except Exception as e:
             st.error("❌ Google OAuth failed")
             st.exception(e)
@@ -80,27 +82,26 @@ meta_connected = st.session_state["meta_access_token"] is not None
 google_connected = st.session_state["google_access_token"] is not None
 
 st.subheader("🔐 Connection Status")
-
 c1, c2 = st.columns(2)
 c1.metric("Meta Ads", "Connected" if meta_connected else "Not connected")
 c2.metric("Google", "Connected" if google_connected else "Not connected")
 
 # =================================================
-# CONNECT BUTTONS
+# CONNECT BUTTONS (DO NOT RESET STATE)
 # =================================================
 with st.expander("🔑 Connect Platforms", expanded=not (meta_connected or google_connected)):
     if not meta_connected:
         st.markdown(f"[🔵 Connect Meta Ads]({meta_login_url()})")
     else:
-        st.success("Meta is connected")
+        st.success("Meta already connected")
 
     if not google_connected:
         st.markdown(f"[🟢 Sign in with Google]({google_login_url()})")
     else:
-        st.success("Google is connected")
+        st.success("Google already connected")
 
 # =================================================
-# META AD ACCOUNTS (TABLE VIEW)
+# META AD ACCOUNTS (TABLE)
 # =================================================
 if meta_connected:
     st.divider()
@@ -111,126 +112,163 @@ if meta_connected:
             st.session_state["meta_access_token"]
         ).get("data", [])
 
-        if not accounts:
-            st.info("No ad accounts found for this Meta user.")
-        else:
-            df = pd.DataFrame(accounts)[["id", "name"]]
-            df["Ad Account ID"] = df["id"].str.replace("act_", "", regex=False)
-            df = df.drop(columns=["id"])
+        if accounts:
+            df_accounts = pd.DataFrame(accounts)[["id", "name"]]
+            df_accounts["Ad Account ID"] = df_accounts["id"].str.replace(
+                "act_", "", regex=False
+            )
+            df_accounts = df_accounts.drop(columns=["id"])
 
             st.dataframe(
-                df,
+                df_accounts,
                 use_container_width=True,
                 hide_index=True,
             )
 
             selected_name = st.selectbox(
                 "Select Active Ad Account",
-                df["name"],
+                df_accounts["name"],
             )
 
-            selected_id = df.loc[
-                df["name"] == selected_name, "Ad Account ID"
+            selected_id = df_accounts.loc[
+                df_accounts["name"] == selected_name, "Ad Account ID"
             ].iloc[0]
 
             st.session_state["ad_account_id"] = selected_id
-            st.success(f"Active Meta Ad Account: {selected_name}")
+            st.success(f"Active Meta Account: {selected_name}")
+
+        else:
+            st.info("No Meta ad accounts found.")
 
     except Exception as e:
-        st.warning("Could not load Meta ad accounts")
+        st.warning("Failed to load Meta ad accounts")
         st.exception(e)
 
 # =================================================
-# MAIN APP TABS
+# MAIN TABS (PERSISTENT)
 # =================================================
-st.divider()
-tab_research, tab_creative, tab_campaigns, tab_strategy, tab_system = st.tabs(
-    ["🔍 Research", "🎨 Creative", "📣 Campaigns", "🧠 Strategy", "🧰 System"]
-)
+tabs = ["Research", "Creative", "Campaigns", "Strategy", "System"]
+active_index = tabs.index(st.session_state["active_tab"])
+
+tab_research, tab_creative, tab_campaigns, tab_strategy, tab_system = st.tabs(tabs)
 
 # =================================================
-# 🔍 RESEARCH TAB
+# 🔍 RESEARCH TAB (PERSISTENT TABLES)
 # =================================================
 with tab_research:
-    st.subheader("Market Research")
+    st.session_state["active_tab"] = "Research"
 
-    if not google_connected:
-        st.info("Connect Google to enable research tools.")
-    else:
-        st.success("Google connected — research ready")
+    st.subheader("🔍 Market Research")
 
-        st.markdown(
-            """
-            **Available research sources (next wiring):**
-            - Google Trends
-            - YouTube trends
-            - Google keyword planning
-            """
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        platform = st.selectbox(
+            "Platform",
+            ["Google Trends", "YouTube", "Google Keywords"],
         )
+
+    with col2:
+        keyword = st.text_input(
+            "Keyword",
+            value=st.session_state["last_keyword"],
+            placeholder="streetwear, fitness, skincare",
+        )
+
+    with col3:
+        geo = st.selectbox("Country", ["US", "CA", "GB", "AU"])
+
+    timeframe = st.selectbox(
+        "Timeframe",
+        ["7 days", "90 days", "12 months", "5 years"],
+    )
+
+    if st.button("📊 Run Research", use_container_width=True):
+        if not keyword:
+            st.warning("Enter a keyword")
+        elif not google_connected:
+            st.warning("Connect Google to run research")
+        else:
+            # 🔧 Replace this with your real research engine
+            dummy_results = [
+                {"keyword": keyword, "metric": "Interest", "value": 72},
+                {"keyword": keyword, "metric": "Trend Score", "value": 88},
+                {"keyword": keyword, "metric": "Competition", "value": "Medium"},
+            ]
+
+            df = pd.DataFrame(dummy_results)
+            st.session_state["research_df"] = df
+            st.session_state["last_keyword"] = keyword
+
+    if st.session_state["research_df"] is not None:
+        st.divider()
+        st.subheader("📈 Research Results")
+
+        st.dataframe(
+            st.session_state["research_df"],
+            use_container_width=True,
+            height=380,
+        )
+
+        with st.expander("⬇️ Export Results"):
+            st.download_button(
+                "Download CSV",
+                st.session_state["research_df"].to_csv(index=False),
+                file_name="research_results.csv",
+                mime="text/csv",
+            )
 
 # =================================================
 # 🎨 CREATIVE TAB
 # =================================================
 with tab_creative:
-    st.subheader("Creative Tools")
+    st.session_state["active_tab"] = "Creative"
 
-    st.markdown(
-        """
-        Generate headlines, primary text, and CTAs.
-        You can generate creatives **without** Meta connected,
-        but Meta is required to publish them.
-        """
-    )
-
-    if meta_connected:
-        st.success("Meta connected — publishing enabled")
-    else:
-        st.info("Connect Meta to publish creatives")
+    st.subheader("🎨 Creative")
+    st.info("Creative tools stay available regardless of OAuth order.")
 
 # =================================================
 # 📣 CAMPAIGNS TAB
 # =================================================
 with tab_campaigns:
-    st.subheader("Campaign Builder")
+    st.session_state["active_tab"] = "Campaigns"
 
-    if not meta_connected:
-        st.warning("Connect Meta to create campaigns.")
+    st.subheader("📣 Campaigns")
+
+    if meta_connected:
+        st.success("Meta connected — campaigns enabled")
     else:
-        st.success("Meta connected — campaign creation ready")
-
-        st.markdown(
-            """
-            **This tab will support:**
-            - Campaign creation
-            - Ad set creation
-            - Creative assignment
-            """
-        )
+        st.info("Connect Meta to create campaigns")
 
 # =================================================
 # 🧠 STRATEGY TAB
 # =================================================
 with tab_strategy:
-    st.subheader("Strategy & Budget Planning")
+    st.session_state["active_tab"] = "Strategy"
 
-    st.markdown(
-        """
-        Strategy planning does **not** require OAuth.
-        Use this section to plan budgets and channel allocation.
-        """
-    )
+    st.subheader("🧠 Strategy")
+    st.info("Strategy planning does not require OAuth.")
 
 # =================================================
 # 🧰 SYSTEM TAB
 # =================================================
 with tab_system:
-    st.subheader("System Status")
+    st.session_state["active_tab"] = "System"
+
+    st.subheader("🧰 System Status")
 
     status_df = pd.DataFrame(
         [
-            {"Component": "Meta OAuth", "Status": meta_connected},
-            {"Component": "Google OAuth", "Status": google_connected},
-            {"Component": "Ad Account Selected", "Status": bool(st.session_state.get("ad_account_id"))},
+            {"Component": "Meta OAuth", "Connected": meta_connected},
+            {"Component": "Google OAuth", "Connected": google_connected},
+            {
+                "Component": "Ad Account Selected",
+                "Connected": bool(st.session_state.get("ad_account_id")),
+            },
+            {
+                "Component": "Research Cached",
+                "Connected": st.session_state["research_df"] is not None,
+            },
         ]
     )
 
