@@ -45,7 +45,7 @@ def generate_strategy(
         },
     }
     
-    def render(meta_token=None, google_token=None):
+def render(meta_token=None, google_token=None):
     import streamlit as st
     import pandas as pd
 
