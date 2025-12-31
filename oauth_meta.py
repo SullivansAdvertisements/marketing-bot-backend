@@ -1,9 +1,16 @@
 import os
-import requests
+from urllib.parse import urlencode
 
 META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
+
+# ✅ THIS WAS MISSING
+META_SCOPES = [
+    "ads_read",
+    "ads_management",
+    "business_management",
+]
 
 def meta_login_url(state: str = "meta"):
     params = {
