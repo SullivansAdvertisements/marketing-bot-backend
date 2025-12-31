@@ -1,5 +1,9 @@
 import streamlit as st
 
+from research.router import render as research_render
+from campaigns.router import render as campaigns_render
+from strategy.router import render as strategy_render
+
 # =================================================
 # STREAMLIT CONFIG (MUST BE FIRST)
 # =================================================
