@@ -5,14 +5,15 @@ META_APP_ID = os.getenv("META_APP_ID")
 META_APP_SECRET = os.getenv("META_APP_SECRET")
 META_REDIRECT_URI = os.getenv("META_REDIRECT_URI")
 
-def meta_login_url():
-    return (
-        "https://www.facebook.com/v18.0/dialog/oauth"
-        f"?client_id={META_APP_ID}"
-        f"&redirect_uri={META_REDIRECT_URI}"
-        f"&scope=ads_read,ads_management"
-        f"&state=meta"
-    )
+def meta_login_url(state: str = "meta"):
+    params = {
+        "client_id": META_APP_ID,
+        "redirect_uri": META_REDIRECT_URI,
+        "scope": ",".join(META_SCOPES),
+        "response_type": "code",
+        "state": state,   # ✅ REQUIRED
+    }
+    return f"{META_AUTH_URL}?{urlencode(params)}"
 
 def exchange_meta_code_for_token(code: str) -> str:
     r = requests.get(
