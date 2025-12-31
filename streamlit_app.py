@@ -59,7 +59,33 @@ if "code" in query and "state" in query:
     except Exception as e:
         st.error("OAuth failed")
         st.exception(e)
+st.divider()
+st.subheader("🔁 Reconnect Platforms")
 
+col1, col2 = st.columns(2)
+
+# ===============================
+# META RECONNECT
+# ===============================
+with col1:
+    if st.session_state["meta_token"]:
+        if st.button("🔄 Reconnect Meta Ads"):
+            st.session_state["meta_token"] = None
+            st.session_state["meta_accounts"] = None
+            st.info("Meta disconnected. Click Connect Meta Ads to reconnect.")
+    else:
+        st.caption("Meta not connected")
+
+# ===============================
+# GOOGLE RECONNECT
+# ===============================
+with col2:
+    if st.session_state["google_token"]:
+        if st.button("🔄 Reconnect Google"):
+            st.session_state["google_token"] = None
+            st.info("Google disconnected. Click Sign in with Google to reconnect.")
+    else:
+        st.caption("Google not connected")
 # =================================================
 # CONNECTION STATUS
 # =================================================
