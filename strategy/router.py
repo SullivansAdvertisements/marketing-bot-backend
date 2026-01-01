@@ -3,8 +3,8 @@
 import streamlit as st
 import pandas as pd
 
-from .strategy.budget_allocator import allocate_budget
-from .strategy.performance_estimator import estimate_performance
+from strategy.budget_allocator import allocate_budget
+from strategy.performance_estimator import estimate_performance
 
 
 def render():
