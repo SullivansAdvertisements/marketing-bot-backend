@@ -7,3 +7,12 @@ KEYWORD_SCHEMA = {
     "top_of_page_cpc_high": float,
     "source": str                # google_ads
 }
+
+AUDIENCE_SCHEMA = {
+    "age_ranges": list,
+    "genders": list,
+    "locations": list,
+    "interests": list,
+    "platform": str,
+    "source": str
+}
