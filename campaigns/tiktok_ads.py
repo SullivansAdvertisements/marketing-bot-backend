@@ -1,3 +1,5 @@
-def create_tiktok_campaign():
-    # TikTok Ads API campaign creation
-    pass
+import streamlit as st
+
+def render():
+    st.subheader("TikTok Ads")
+    st.info("TikTok Ads API requires business approval. Integration optional.")
