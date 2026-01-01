@@ -1,61 +1,75 @@
 import streamlit as st
 import traceback
 
-# --------------------------------------------------
-# STREAMLIT CONFIG (MUST BE FIRST)
-# --------------------------------------------------
+# -------------------------------------------------
+# STREAMLIT CONFIG
+# -------------------------------------------------
 st.set_page_config(
-    page_title="Marketing Intelligence Platform",
+    page_title="Marketing Bot",
     layout="wide",
-    initial_sidebar_state="collapsed",
 )
 
-st.title("🚀 Marketing Intelligence Platform")
+st.title("🚀 Marketing Bot")
 
-# --------------------------------------------------
-# SAFE IMPORT HELPER
-# --------------------------------------------------
-def safe_import(module_path, label):
+# -------------------------------------------------
+# SAFE RENDER WRAPPER
+# -------------------------------------------------
+def safe_render(name, fn):
     try:
-        module = __import__(module_path, fromlist=["render"])
+        fn()
+    except Exception as err:
+        st.error(f"❌ {name} failed to load")
+        st.code(str(err))
+        st.expander("Traceback").code(traceback.format_exc())
+
+
+# -------------------------------------------------
+# SAFE ROUTER IMPORTS
+# -------------------------------------------------
+def load_router(import_path, label):
+    try:
+        module = __import__(import_path, fromlist=["render"])
         return module.render
-    except Exception as e:
-        def _error():
-            st.error(f"❌ {label} failed to load")
-            st.code(str(e))
-        return _error
+    except Exception as err:
+        def _fallback():
+            st.error(f"❌ {label} unavailable")
+            st.code(str(err))
+        return _fallback
 
 
-# --------------------------------------------------
-# LOAD TAB RENDERERS (SAFE)
-# --------------------------------------------------
-research_render = safe_import("research.router", "Research")
-campaigns_render = safe_import("campaigns.router", "Campaigns")
-creative_render = safe_import("creative.router", "Creative")
-strategy_render = safe_import("strategy.router", "Strategy")
-utils_render = safe_import("utils.logging", "Utils")  # placeholder
+research_render = load_router("research.router", "Research")
+campaigns_render = load_router("campaigns.router", "Campaigns")
+creative_render = load_router("creative.router", "Creative")
+strategy_render = load_router("strategy.router", "Strategy")
+utils_render = load_router("utils.router", "Utils")
 
+# -------------------------------------------------
+# SESSION STATE BOOTSTRAP
+# -------------------------------------------------
+def bootstrap_state():
+    defaults = {
+        "google_token": st.secrets.get("GOOGLE_ADS_DEVELOPER_TOKEN"),
+        "meta_token": st.secrets.get("META_ACCESS_TOKEN"),
+        "openai_key": st.secrets.get("OPENAI_API_KEY"),
+    }
+    for k, v in defaults.items():
+        st.session_state.setdefault(k, v)
 
-# --------------------------------------------------
-# GLOBAL API STATUS
-# --------------------------------------------------
-with st.expander("🔐 API & Platform Status", expanded=False):
-    st.markdown("### Active Connections")
+bootstrap_state()
 
-    def status(name, key):
-        connected = bool(st.secrets.get(key))
-        st.success(f"{name} Connected") if connected else st.warning(f"{name} Not Connected")
+# -------------------------------------------------
+# API STATUS BAR
+# -------------------------------------------------
+with st.expander("🔐 API & Platform Status"):
+    st.write({
+        "Google Ads": bool(st.session_state.get("google_token")),
+        "Meta Ads": bool(st.session_state.get("meta_token")),
+        "OpenAI": bool(st.session_state.get("openai_key")),
+    })
 
-    status("Google Ads", "GOOGLE_ADS_API_KEY")
-    status("Meta Ads", "META_ACCESS_TOKEN")
-    status("OpenAI", "OPENAI_API_KEY")
-    status("TikTok", "TIKTOK_API_KEY")
-    status("YouTube", "YOUTUBE_API_KEY")
-
-
-# --------------------------------------------------
-# MAIN NAV TABS
-# --------------------------------------------------
+# -------------------------------------------------
+# MAIN TABS
+# -------------------------------------------------
 tabs = st.tabs([
     "🔎 Research",
     "📣 Campaigns",
@@ -64,43 +78,17 @@ tabs = st.tabs([
     "🛠 Utils",
 ])
 
-# --------------------------------------------------
-# TAB EXECUTION (ISOLATED & SAFE)
-# --------------------------------------------------
 with tabs[0]:
-    try:
-        research_render()
-    except Exception:
-        st.error("Research tab crashed")
-        st.code(traceback.format_exc())
+    safe_render("Research", research_render)
 
 with tabs[1]:
-    try:
-        campaigns_render()
-    except Exception:
-        st.error("Campaigns tab crashed")
-        st.code(traceback.format_exc())
+    safe_render("Campaigns", campaigns_render)
 
 with tabs[2]:
-    try:
-        creative_render()
-    except Exception:
-        st.error("Creative tab crashed")
-        st.code(traceback.format_exc())
+    safe_render("Creative", creative_render)
 
 with tabs[3]:
-    try:
-        strategy_render()
-    except Exception:
-        st.error("Strategy tab crashed")
-        st.code(traceback.format_exc())
+    safe_render("Strategy", strategy_render)
 
 with tabs[4]:
-    st.header("🛠 Utilities")
-    st.markdown("""
-    This section contains:
-    - Logging
-    - Validators
-    - Rate limits
-    """)
-    st.success("Utilities loaded successfully")
+    safe_render("Utils", utils_render)
