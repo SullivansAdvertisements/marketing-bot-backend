@@ -1,23 +1,21 @@
 import requests
+import os
 
-def get_tiktok_trends(keyword: str):
-    url = "https://www.tiktok.com/api/search/general/full/"
+TIKTOK_TOKEN = os.getenv("TIKTOK_ACCESS_TOKEN")
 
-    params = {
-        "keyword": keyword,
-        "offset": 0,
-        "count": 10,
+def fetch_tiktok_trends(keyword, region="US"):
+    url = "https://open.tiktokapis.com/v2/research/hashtag/search/"
+
+    headers = {
+        "Authorization": f"Bearer {TIKTOK_TOKEN}",
+        "Content-Type": "application/json",
     }
 
-    r = requests.get(url, params=params)
-    data = r.json()
+    payload = {
+        "query": keyword,
+        "region_code": region,
+        "max_count": 20,
+    }
 
-    return [
-        {
-            "desc": item.get("desc"),
-            "likes": item.get("stats", {}).get("diggCount"),
-            "shares": item.get("stats", {}).get("shareCount"),
-            "plays": item.get("stats", {}).get("playCount"),
-        }
-        for item in data.get("item_list", [])
-    ]
+    r = requests.post(url, json=payload, headers=headers, timeout=10)
+    return r.json()
