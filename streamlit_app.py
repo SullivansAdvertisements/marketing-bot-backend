@@ -1,147 +1,124 @@
+# streamlit_app.py
+# ============================================================
+# GLOBAL PATH FIX (CRITICAL FOR STREAMLIT CLOUD)
+# ============================================================
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(ROOT_DIR)
+
+# ============================================================
+# IMPORTS
+# ============================================================
+import streamlit as st
 
 from research.router import render as research_render
 from campaigns.router import render as campaigns_render
 from strategy.router import render as strategy_render
+from creative.router import generate_creative  # optional usage
 
-# =================================================
-# STREAMLIT CONFIG (MUST BE FIRST)
-# =================================================
+# ============================================================
+# STREAMLIT CONFIG
+# ============================================================
 st.set_page_config(
     page_title="Marketing Bot",
-    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# =================================================
-# SAFE SESSION STATE BOOTSTRAP
-# =================================================
-DEFAULT_STATE = {
-    "meta_token": None,
-    "google_token": None,
-    "active_tab": "Research",
-}
+# ============================================================
+# SESSION STATE INITIALIZATION
+# ============================================================
+def init_session():
+    defaults = {
+        # platform tokens (background)
+        "meta_token": None,
+        "google_token": None,
 
-for k, v in DEFAULT_STATE.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+        # ui
+        "active_tab": "Research",
+    }
 
-# =================================================
-# SAFE ROUTER IMPORTS (NO SIDE EFFECTS)
-# =================================================
-from research.router import render as research_render
-from app.campaigns.router import render as campaigns_render
-from app.strategy.router import render as strategy_render
-from app.creative.router import generate_creative
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
-# =================================================
-# APP HEADER
-# =================================================
+
+init_session()
+
+# ============================================================
+# LOAD SECRETS (NO OAUTH)
+# ============================================================
+# These live in Streamlit Cloud → App → Settings → Secrets
+
+if "META_ACCESS_TOKEN" in st.secrets:
+    st.session_state.meta_token = st.secrets["META_ACCESS_TOKEN"]
+
+if "GOOGLE_ADS_DEVELOPER_TOKEN" in st.secrets:
+    st.session_state.google_token = st.secrets["GOOGLE_ADS_DEVELOPER_TOKEN"]
+
+# ============================================================
+# HEADER
+# ============================================================
 st.title("🚀 Marketing Bot")
-st.caption("Research → Strategy → Campaign Execution")
 
-# =================================================
-# GLOBAL CONNECTION STATUS (NON-BLOCKING)
-# =================================================
-with st.expander("🔐 Platform Connection Status", expanded=False):
-    col1, col2 = st.columns(2)
+st.caption(
+    "Research → Strategy → Campaigns\n"
+    "Platforms connect silently in the background"
+)
 
-    with col1:
+# ============================================================
+# PLATFORM STATUS (NON-BLOCKING)
+# ============================================================
+with st.expander("🔐 Platform Status", expanded=False):
+    c1, c2 = st.columns(2)
+
+    with c1:
         if st.session_state.meta_token:
-            st.success("Meta Ads Connected")
+            st.success("Meta Ads ready")
         else:
-            st.warning("Meta Ads Not Connected")
+            st.warning("Meta Ads token missing")
 
-    with col2:
+    with c2:
         if st.session_state.google_token:
-            st.success("Google Ads Connected")
+            st.success("Google Ads ready")
         else:
-            st.warning("Google Ads Not Connected")
+            st.warning("Google Ads token missing")
 
-# =================================================
-# MAIN NAVIGATION (MOBILE SAFE)
-# =================================================
-tabs = st.tabs([
-    "🔎 Research",
-    "📈 Strategy",
-    "📣 Campaigns",
-    "🎨 Creative",
-])
+# ============================================================
+# MAIN NAVIGATION (MOBILE FRIENDLY)
+# ============================================================
+tabs = st.tabs(
+    [
+        "🔎 Research",
+        "📈 Strategy",
+        "📣 Campaigns",
+    ]
+)
 
-# =================================================
-# TAB — RESEARCH
-# =================================================
+# ============================================================
+# TAB 1 — RESEARCH
+# ============================================================
 with tabs[0]:
-    try:
-        research_render()
-    except Exception as e:
-        st.error("Research module failed to load.")
-        st.exception(e)
+    research_render()
 
-# =================================================
-# TAB — STRATEGY
-# =================================================
+# ============================================================
+# TAB 2 — STRATEGY
+# ============================================================
 with tabs[1]:
-    try:
-        strategy_render()
-    except Exception as e:
-        st.error("Strategy module failed to load.")
-        st.exception(e)
+    strategy_render()
 
-# =================================================
-# TAB — CAMPAIGNS
-# =================================================
+# ============================================================
+# TAB 3 — CAMPAIGNS
+# ============================================================
 with tabs[2]:
-    try:
-        campaigns_render()
-    except Exception as e:
-        st.error("Campaigns module failed to load.")
-        st.exception(e)
+    campaigns_render()
 
-# =================================================
-# TAB — CREATIVE (AI)
-# =================================================
-with tabs[3]:
-    st.subheader("🎨 Creative Generator")
-
-    with st.form("creative_form"):
-        product = st.text_input("Product / Offer")
-        audience = st.text_input("Target Audience")
-        goal = st.selectbox(
-            "Goal",
-            ["Conversions", "Leads", "Traffic", "Awareness"],
-        )
-        tone = st.selectbox(
-            "Tone",
-            ["bold", "luxury", "aggressive", "minimal"],
-        )
-        platform = st.selectbox(
-            "Platform",
-            ["meta", "google", "tiktok"],
-        )
-
-        submitted = st.form_submit_button("Generate Creative")
-
-    if submitted and product and audience:
-        creative = generate_creative(
-            product=product,
-            audience=audience,
-            goal=goal,
-            tone=tone,
-            platform=platform,
-            use_ai=True,
-        )
-
-        st.subheader("🧠 AI Output")
-
-        st.table([
-            {"Field": "Headline", "Value": creative["headline"]},
-            {"Field": "Primary Text", "Value": creative["primary_text"]},
-            {"Field": "CTA", "Value": creative["cta"]},
-            {"Field": "Platform", "Value": creative["platform"]},
-            {"Field": "Source", "Value": creative["source"]},
-        ])
+# ============================================================
+# FOOTER
+# ============================================================
+st.markdown("---")
+st.caption(
+    "Marketing Bot • Modular • Token-safe • Mobile-ready"
+)
