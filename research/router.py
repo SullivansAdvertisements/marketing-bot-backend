@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 
-# SAFE LOCAL IMPORTS
 from research.google_keywords import fetch_google_keywords
 from research.google_trends import fetch_google_trends
 from research.meta_ad_library import fetch_meta_ads
@@ -13,52 +12,52 @@ def render():
     st.header("🔎 Market Research")
 
     # -------------------------
-    # SESSION STATE SAFETY
+    # SESSION STATE
     # -------------------------
-    for key in [
-        "research_keyword",
-        "research_country",
-        "research_results",
-    ]:
+    for key in ["research_results"]:
         if key not in st.session_state:
-            st.session_state[key] = None
+            st.session_state[key] = {}
 
     # -------------------------
-    # INPUTS
+    # INPUT PANEL
     # -------------------------
     with st.form("research_form"):
-        keyword = st.text_input(
-            "Primary Keyword / Topic",
-            placeholder="e.g. streetwear hoodies",
-        )
+        col1, col2 = st.columns(2)
 
-        country = st.selectbox(
-            "Target Country",
-            ["US", "CA", "UK", "AU", "Global"],
-        )
+        with col1:
+            keyword = st.text_input(
+                "Keyword / Market",
+                placeholder="streetwear hoodies",
+            )
+
+        with col2:
+            country = st.selectbox(
+                "Country",
+                ["US", "CA", "UK", "AU", "Global"],
+            )
 
         platforms = st.multiselect(
-            "Platforms to Research",
+            "Platforms",
             [
-                "Google Search",
+                "Google Keywords",
                 "Google Trends",
                 "Meta Ads",
                 "TikTok",
                 "YouTube",
             ],
-            default=["Google Search", "Google Trends"],
+            default=["Google Keywords", "Google Trends"],
         )
 
-        submitted = st.form_submit_button("Run Research")
+        run = st.form_submit_button("Run Research")
 
     # -------------------------
-    # RUN RESEARCH (FAIL-SAFE)
+    # EXECUTION
     # -------------------------
-    if submitted and keyword:
+    if run and keyword:
         results = {}
 
-        with st.spinner("Collecting research data..."):
-            if "Google Search" in platforms:
+        with st.spinner("Running market analysis..."):
+            if "Google Keywords" in platforms:
                 results["Google Keywords"] = fetch_google_keywords(keyword, country)
 
             if "Google Trends" in platforms:
@@ -76,7 +75,7 @@ def render():
         st.session_state.research_results = results
 
     # -------------------------
-    # DISPLAY RESULTS
+    # OUTPUT
     # -------------------------
     if st.session_state.research_results:
         st.subheader("📊 Research Results")
@@ -84,26 +83,15 @@ def render():
         for source, data in st.session_state.research_results.items():
             st.markdown(f"### {source}")
 
-            if data is None:
-                st.info("No data returned.")
-                continue
-
             if isinstance(data, pd.DataFrame):
                 st.dataframe(data, use_container_width=True)
             elif isinstance(data, list):
-                st.table(pd.DataFrame(data))
+                st.dataframe(pd.DataFrame(data), use_container_width=True)
             else:
                 st.json(data)
 
-    # -------------------------
-    # SUMMARY
-    # -------------------------
-    if st.session_state.research_results:
-        st.subheader("🧠 Research Summary")
-        st.markdown("""
-        Use this research to:
-        - Identify **high-intent demand**
-        - Spot **creative trends**
-        - Choose **winning platforms**
-        - Feed **campaign & budget strategy**
-        """)
+        st.subheader("🧠 AI Research Notes")
+        st.info(
+            "Use these insights to validate demand, pricing power, "
+            "creative direction, and platform selection."
+        )
