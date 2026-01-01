@@ -1,31 +1,34 @@
 import os
-import requests
+import pandas as pd
+from googleapiclient.discovery import build
+
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-def get_youtube_trends(keyword: str, max_results: int = 10):
-    if not YOUTUBE_API_KEY:
-        raise Exception("YOUTUBE_API_KEY missing")
 
-    url = "https://www.googleapis.com/youtube/v3/search"
+def fetch_youtube_trends(keyword: str):
+    if not keyword or not YOUTUBE_API_KEY:
+        return pd.DataFrame()
 
-    params = {
-        "part": "snippet",
-        "q": keyword,
-        "type": "video",
-        "order": "viewCount",
-        "maxResults": max_results,
-        "key": YOUTUBE_API_KEY,
-    }
+    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
-    r = requests.get(url, params=params)
-    data = r.json()
+    request = youtube.search().list(
+        q=keyword,
+        part="snippet",
+        type="video",
+        maxResults=10,
+        order="viewCount",
+    )
 
-    return [
-        {
-            "title": item["snippet"]["title"],
-            "channel": item["snippet"]["channelTitle"],
-            "published": item["snippet"]["publishedAt"],
-        }
-        for item in data.get("items", [])
-    ]
+    response = request.execute()
+
+    rows = []
+    for item in response.get("items", []):
+        snippet = item["snippet"]
+        rows.append({
+            "title": snippet["title"],
+            "channel": snippet["channelTitle"],
+            "published_at": snippet["publishedAt"],
+        })
+
+    return pd.DataFrame(rows)
