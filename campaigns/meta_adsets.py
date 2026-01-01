@@ -1,58 +1,54 @@
-def create_meta_adset(
-    access_token: str,
-    ad_account_id: str,
-    campaign_id: str,
-    name: str,
-    daily_budget: int,
-    start_time: str,
-    end_time: str,
-    geo_countries: list,
-    age_min: int,
-    age_max: int,
-) -> dict:
-    account_id = ad_account_id.replace("act_", "")
-    url = f"{GRAPH_BASE}/act_{account_id}/adsets"
+import streamlit as st
+import pandas as pd
+import requests
+
+
+def fetch_meta_delivery_estimate(budget):
+    token = st.secrets.get("META_ACCESS_TOKEN")
+    ad_account = st.secrets.get("META_AD_ACCOUNT_ID")
+
+    if not token or not ad_account:
+        return None, "Meta API keys missing"
+
+    url = f"https://graph.facebook.com/v18.0/act_{ad_account}/delivery_estimate"
 
     payload = {
-        "name": name,
-        "campaign_id": campaign_id,
-        "daily_budget": daily_budget,
-        "billing_event": "IMPRESSIONS",
+        "access_token": token,
         "optimization_goal": "LINK_CLICKS",
-        "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
-        "targeting": {
-            "geo_locations": {"countries": geo_countries},
-            "age_min": age_min,
-            "age_max": age_max,
+        "daily_budget": int(budget * 100),
+        "targeting_spec": {
+            "geo_locations": {"countries": ["US"]},
+            "publisher_platforms": ["facebook", "instagram"],
         },
-        "start_time": start_time,
-        "end_time": end_time,
-        "status": "PAUSED",
-        "access_token": access_token,
     }
 
-    r = requests.post(url, data=payload, timeout=10)
-    data = r.json()
+    response = requests.post(url, json=payload).json()
 
-    if "error" in data:
-        raise Exception(f"Ad set creation failed: {data}")
+    if "data" not in response:
+        return None, "Meta API returned no estimate"
 
-    return data
-    
-def get_meta_delivery_estimate(
-    access_token,
-    ad_account_id,
-    daily_budget,
-    targeting,
-):
-    url = f"https://graph.facebook.com/v18.0/act_{ad_account_id}/delivery_estimate"
+    est = response["data"][0]
 
-    payload = {
-        "access_token": access_token,
-        "optimization_goal": "LINK_CLICKS",
-        "daily_budget": int(daily_budget * 100),
-        "targeting_spec": targeting,
-    }
+    return {
+        "Daily Budget ($)": budget,
+        "Estimated Reach": est.get("users"),
+        "Estimated Impressions": est.get("impressions"),
+        "Platform": "Facebook / Instagram",
+    }, None
 
-    r = requests.post(url, json=payload)
-    return r.json()
+
+def render():
+    st.subheader("🟦 Meta Ad Set – Estimated Reach")
+
+    budget = st.number_input("Daily Budget ($)", 5, 1000, 25)
+
+    if st.button("📊 Estimate Meta Reach"):
+        result, error = fetch_meta_delivery_estimate(budget)
+
+        if error:
+            st.warning(error)
+            return
+
+        st.dataframe(pd.DataFrame([result]), use_container_width=True)
+
+        st.success("Data provided directly by Meta Delivery Estimate API")
