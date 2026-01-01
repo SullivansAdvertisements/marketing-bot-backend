@@ -1,36 +1,124 @@
-#import os
+# =========================================================
+# STREAMLIT CORE
+# =========================================================
+import os
 import streamlit as st
-import pandas as pd
 
-# ---------------------------------
-# PAGE CONFIG (MOBILE FIRST)
-# ---------------------------------
+# =========================================================
+# PAGE CONFIG (MUST BE FIRST)
+# =========================================================
 st.set_page_config(
     page_title="Marketing Bot",
-    layout="centered",
-    initial_sidebar_state="collapsed",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-st.title("🚀 Marketing Bot")
+# =========================================================
+# SAFE ENV HELPER (CRITICAL FIX)
+# =========================================================
+def env(key: str):
+    """
+    Safe environment loader.
+    Works with:
+    - os.environ
+    - Streamlit secrets
+    - Missing keys (returns None)
+    """
+    try:
+        return os.getenv(key) or st.secrets.get(key, None)
+    except Exception:
+        return None
 
-# ---------------------------------
-# SAFE ENV ACCESS
-# ---------------------------------
-def env(key):
-    return os.getenv(key) or st.secrets.get(key, None)
-
-
-# ---------------------------------
-# PLATFORM KEY STATUS
-# ---------------------------------
-KEYS = {
-    "Meta Access Token": env("META_ACCESS_TOKEN"),
-    "Meta Ad Account ID": env("META_AD_ACCOUNT_ID"),
-    "Google Developer Token": env("GOOGLE_DEVELOPER_TOKEN"),
-    "Google Refresh Token": env("GOOGLE_REFRESH_TOKEN"),
-    "OpenAI API Key": env("OPENAI_API_KEY"),
+# =========================================================
+# SESSION STATE SAFETY
+# =========================================================
+DEFAULT_SESSION_KEYS = {
+    "meta_token": env("META_ACCESS_TOKEN"),
+    "google_token": env("GOOGLE_ADS_API_KEY"),
+    "openai_key": env("OPENAI_API_KEY"),
 }
 
+for k, v in DEFAULT_SESSION_KEYS.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# =========================================================
+# API STATUS (NON-BLOCKING)
+# =========================================================
+API_STATUS = {
+    "Meta Ads": bool(st.session_state.meta_token),
+    "Google Ads": bool(st.session_state.google_token),
+    "OpenAI": bool(st.session_state.openai_key),
+}
+
+# =========================================================
+# SAFE ROUTER IMPORTS (NO app.)
+# =========================================================
+try:
+    from research.router import render as research_render
+except Exception as e:
+    research_render = lambda: st.error(f"Research tab failed to load: {e}")
+
+try:
+    from campaigns.router import render as campaigns_render
+except Exception as e:
+    campaigns_render = lambda: st.error(f"Campaigns tab failed to load: {e}")
+
+try:
+    from strategy.router import render as strategy_render
+except Exception as e:
+    strategy_render = lambda: st.error(f"Strategy tab failed to load: {e}")
+
+try:
+    from creative.router import render as creative_render
+except Exception as e:
+    creative_render = lambda: st.error(f"Creative tab failed to load: {e}")
+
+# =========================================================
+# HEADER
+# =========================================================
+st.title("🚀 Marketing Bot")
+
+# =========================================================
+# SIDEBAR — API STATUS (SAFE)
+# =========================================================
+with st.sidebar:
+    st.subheader("🔐 API Status")
+
+    for name, active in API_STATUS.items():
+        if active:
+            st.success(f"{name}: Connected")
+        else:
+            st.warning(f"{name}: Not Connected")
+
+    st.divider()
+    st.caption("App runs even if APIs are disconnected.")
+
+# =========================================================
+# MAIN NAVIGATION TABS
+# =========================================================
+tabs = st.tabs([
+    "🔎 Research",
+    "📣 Campaigns",
+    "📈 Strategy",
+    "🎨 Creative",
+])
+
+# =========================================================
+# TAB ROUTING
+# =========================================================
+with tabs[0]:
+    research_render()
+
+with tabs[1]:
+    campaigns_render()
+
+with tabs[2]:
+    strategy_render()
+
+with tabs[3]:
+    creative_render()
 # ---------------------------------
 # TABS (MOBILE FRIENDLY)
 # ---------------------------------
