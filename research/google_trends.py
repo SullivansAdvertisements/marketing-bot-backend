@@ -1,22 +1,28 @@
-from pytrends.request import TrendReq
+import streamlit as st
 import pandas as pd
+from pytrends.request import TrendReq
 
 
-def fetch_google_trends(keyword: str, country: str = "US"):
-    if not keyword:
-        return pd.DataFrame()
+def google_trends_tab():
+    st.subheader("📈 Google Trends Analysis")
 
-    pytrends = TrendReq(hl="en-US", tz=360)
+    keyword = st.text_input("Keyword", key="gt_keyword")
+    region = st.selectbox("Region", ["US", "Worldwide"])
 
-    geo = "" if country == "Global" else country
-    pytrends.build_payload([keyword], timeframe="today 12-m", geo=geo)
+    if st.button("Analyze Trends"):
+        try:
+            pytrends = TrendReq(hl="en-US", tz=360)
+            pytrends.build_payload([keyword], geo=region if region != "Worldwide" else "")
+            data = pytrends.interest_over_time()
 
-    df = pytrends.interest_over_time()
+            if data.empty:
+                st.warning("No trend data found.")
+                return
 
-    if df.empty:
-        return pd.DataFrame()
+            df = data.reset_index()
+            st.line_chart(df.set_index("date")[keyword])
+            st.dataframe(df.tail(12), use_container_width=True)
 
-    df = df.reset_index()
-    df.rename(columns={keyword: "interest"}, inplace=True)
-
-    return df[["date", "interest"]]
+        except Exception as e:
+            st.error("Google Trends unavailable.")
+            st.caption(str(e))
