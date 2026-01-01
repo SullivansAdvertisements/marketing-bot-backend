@@ -1,18 +1,21 @@
-def fetch_campaign_insights(
-    access_token: str,
-    campaign_id: str,
-) -> dict:
-    url = f"{GRAPH_BASE}/{campaign_id}/insights"
+import streamlit as st
+import requests
 
+TOKEN = st.secrets.get("META_ACCESS_TOKEN")
+ACCOUNT = st.secrets.get("META_AD_ACCOUNT_ID")
+
+
+def render():
+    st.subheader("Meta Performance Insights")
+
+    url = f"https://graph.facebook.com/v18.0/{ACCOUNT}/insights"
     params = {
-        "fields": "impressions,clicks,spend,ctr,cpm",
-        "access_token": access_token,
+        "fields": "campaign_name,spend,impressions,clicks",
+        "access_token": TOKEN,
     }
 
-    r = requests.get(url, params=params, timeout=10)
-    data = r.json()
-
-    if "error" in data:
-        raise Exception(f"Insights fetch failed: {data}")
-
-    return data
+    r = requests.get(url, params=params)
+    if r.status_code == 200:
+        st.dataframe(r.json().get("data", []), use_container_width=True)
+    else:
+        st.error("Failed to fetch insights")
