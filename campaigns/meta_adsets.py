@@ -39,7 +39,7 @@ def create_meta_adset(
 
     return data
     
-    def get_meta_delivery_estimate(
+def get_meta_delivery_estimate(
     access_token,
     ad_account_id,
     daily_budget,
