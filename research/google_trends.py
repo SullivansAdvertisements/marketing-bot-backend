@@ -1,29 +1,33 @@
-from pytrends.request import TrendReq
+import pandas as pd
+import datetime
 
-def get_google_trends(
-    keyword: str,
-    geo: str = "US",
-    timeframe: str = "today 12-m",
-):
-    pytrends = TrendReq(hl="en-US", tz=360)
 
-    pytrends.build_payload(
-        kw_list=[keyword],
-        geo=geo,
-        timeframe=timeframe,
-    )
+def fetch_google_trends(keyword: str, country: str = "US"):
+    """
+    Streamlit-safe Google Trends stub.
+    Never crashes the app.
 
-    interest = pytrends.interest_over_time()
+    Returns:
+        pd.DataFrame
+    """
 
-    if interest.empty:
-        return []
+    if not keyword:
+        return pd.DataFrame()
 
-    interest = interest.reset_index()
+    # Simulated trend data (replace later with pytrends)
+    today = datetime.date.today()
 
-    return [
-        {
-            "date": str(row["date"]),
-            "interest": int(row[keyword]),
-        }
-        for _, row in interest.iterrows()
-    ]
+    data = {
+        "date": [
+            today - datetime.timedelta(days=30),
+            today - datetime.timedelta(days=21),
+            today - datetime.timedelta(days=14),
+            today - datetime.timedelta(days=7),
+            today,
+        ],
+        "interest": [42, 55, 63, 71, 78],
+        "keyword": [keyword] * 5,
+        "country": [country] * 5,
+    }
+
+    return pd.DataFrame(data)
