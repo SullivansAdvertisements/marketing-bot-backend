@@ -38,3 +38,21 @@ def create_meta_adset(
         raise Exception(f"Ad set creation failed: {data}")
 
     return data
+    
+    def get_meta_delivery_estimate(
+    access_token,
+    ad_account_id,
+    daily_budget,
+    targeting,
+):
+    url = f"https://graph.facebook.com/v18.0/act_{ad_account_id}/delivery_estimate"
+
+    payload = {
+        "access_token": access_token,
+        "optimization_goal": "LINK_CLICKS",
+        "daily_budget": int(daily_budget * 100),
+        "targeting_spec": targeting,
+    }
+
+    r = requests.post(url, json=payload)
+    return r.json()
