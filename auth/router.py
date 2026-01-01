@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from .auth.oauth_meta import meta_login, meta_callback
-from .auth.oauth_google import google_login, google_callback
-from .auth.oauth_tiktok import tiktok_login, tiktok_callback
+from auth.oauth_meta import meta_login, meta_callback
+from auth.oauth_google import google_login, google_callback
+from auth.oauth_tiktok import tiktok_login, tiktok_callback
 
 router = APIRouter()
 
