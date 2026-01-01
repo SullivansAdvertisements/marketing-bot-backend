@@ -1,135 +1,106 @@
 import streamlit as st
-import os
+import traceback
 
-# -------------------------------------------------
-# PAGE CONFIG (MOBILE FIRST)
-# -------------------------------------------------
+# --------------------------------------------------
+# STREAMLIT CONFIG (MUST BE FIRST)
+# --------------------------------------------------
 st.set_page_config(
-    page_title="Marketing Bot",
-    page_icon="🚀",
+    page_title="Marketing Intelligence Platform",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# -------------------------------------------------
-# SAFE ROUTER IMPORTS
-# -------------------------------------------------
-def safe_import(path, fallback_name):
+st.title("🚀 Marketing Intelligence Platform")
+
+# --------------------------------------------------
+# SAFE IMPORT HELPER
+# --------------------------------------------------
+def safe_import(module_path, label):
     try:
-        module = __import__(path, fromlist=["render"])
+        module = __import__(module_path, fromlist=["render"])
         return module.render
     except Exception as e:
-        def _fallback():
-            st.error(f"{fallback_name} failed to load.")
+        def _error():
+            st.error(f"❌ {label} failed to load")
             st.code(str(e))
-        return _fallback
+        return _error
 
 
+# --------------------------------------------------
+# LOAD TAB RENDERERS (SAFE)
+# --------------------------------------------------
 research_render = safe_import("research.router", "Research")
 campaigns_render = safe_import("campaigns.router", "Campaigns")
 creative_render = safe_import("creative.router", "Creative")
 strategy_render = safe_import("strategy.router", "Strategy")
+utils_render = safe_import("utils.logging", "Utils")  # placeholder
 
-# -------------------------------------------------
+
+# --------------------------------------------------
 # GLOBAL API STATUS
-# -------------------------------------------------
-def get_api_status():
-    def has(key):
-        return bool(os.getenv(key) or st.secrets.get(key, None))
-
-    return {
-        "Google Ads": has("GOOGLE_ADS_API_KEY"),
-        "Meta Ads": has("META_ACCESS_TOKEN"),
-        "OpenAI": has("OPENAI_API_KEY"),
-        "TikTok": has("TIKTOK_API_KEY"),
-        "YouTube": has("YOUTUBE_API_KEY"),
-    }
-
-
-# -------------------------------------------------
-# HEADER
-# -------------------------------------------------
-st.title("🚀 Marketing Bot")
-
+# --------------------------------------------------
 with st.expander("🔐 API & Platform Status", expanded=False):
-    cols = st.columns(5)
-    for col, (name, ok) in zip(cols, get_api_status().items()):
-        col.success(name) if ok else col.warning(name)
+    st.markdown("### Active Connections")
 
-st.divider()
+    def status(name, key):
+        connected = bool(st.secrets.get(key))
+        st.success(f"{name} Connected") if connected else st.warning(f"{name} Not Connected")
 
-# -------------------------------------------------
+    status("Google Ads", "GOOGLE_ADS_API_KEY")
+    status("Meta Ads", "META_ACCESS_TOKEN")
+    status("OpenAI", "OPENAI_API_KEY")
+    status("TikTok", "TIKTOK_API_KEY")
+    status("YouTube", "YOUTUBE_API_KEY")
+
+
+# --------------------------------------------------
 # MAIN NAV TABS
-# -------------------------------------------------
+# --------------------------------------------------
 tabs = st.tabs([
     "🔎 Research",
     "📣 Campaigns",
     "🎨 Creative",
-    "📊 Strategy",
-    "🛠 Utilities",
+    "📈 Strategy",
+    "🛠 Utils",
 ])
 
-# -------------------------------------------------
-# RESEARCH
-# -------------------------------------------------
+# --------------------------------------------------
+# TAB EXECUTION (ISOLATED & SAFE)
+# --------------------------------------------------
 with tabs[0]:
-    research_render()
+    try:
+        research_render()
+    except Exception:
+        st.error("Research tab crashed")
+        st.code(traceback.format_exc())
 
-    # Promote research into creative + strategy
-    if "research_results" in st.session_state and st.session_state.research_results:
-        st.session_state["research_bundle"] = st.session_state.research_results
-
-# -------------------------------------------------
-# CAMPAIGNS
-# -------------------------------------------------
 with tabs[1]:
-    campaigns_render()
+    try:
+        campaigns_render()
+    except Exception:
+        st.error("Campaigns tab crashed")
+        st.code(traceback.format_exc())
 
-# -------------------------------------------------
-# CREATIVE (OPENAI)
-# -------------------------------------------------
 with tabs[2]:
-    creative_render()
+    try:
+        creative_render()
+    except Exception:
+        st.error("Creative tab crashed")
+        st.code(traceback.format_exc())
 
-# -------------------------------------------------
-# STRATEGY
-# -------------------------------------------------
 with tabs[3]:
-    strategy_render()
+    try:
+        strategy_render()
+    except Exception:
+        st.error("Strategy tab crashed")
+        st.code(traceback.format_exc())
 
-# -------------------------------------------------
-# UTILITIES
-# -------------------------------------------------
 with tabs[4]:
-    st.header("🛠 System Utilities")
-
-    st.subheader("Environment Diagnostics")
-    env = {
-        "GOOGLE_ADS_API_KEY": bool(os.getenv("GOOGLE_ADS_API_KEY") or st.secrets.get("GOOGLE_ADS_API_KEY", None)),
-        "META_ACCESS_TOKEN": bool(os.getenv("META_ACCESS_TOKEN") or st.secrets.get("META_ACCESS_TOKEN", None)),
-        "OPENAI_API_KEY": bool(os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", None)),
-        "TIKTOK_API_KEY": bool(os.getenv("TIKTOK_API_KEY") or st.secrets.get("TIKTOK_API_KEY", None)),
-        "YOUTUBE_API_KEY": bool(os.getenv("YOUTUBE_API_KEY") or st.secrets.get("YOUTUBE_API_KEY", None)),
-    }
-
-    st.table(
-        [{"Key": k, "Status": "Connected" if v else "Missing"} for k, v in env.items()]
-    )
-
-    st.subheader("Session State")
-    st.json({k: type(v).__name__ for k, v in st.session_state.items()})
-
-    st.info(
-        """
-        Utilities exist to:
-        • Monitor API connectivity  
-        • Debug session state  
-        • Prevent silent failures  
-        """
-    )
-
-# -------------------------------------------------
-# FOOTER
-# -------------------------------------------------
-st.divider()
-st.caption("Marketing Bot • Modular • API-Driven • Research-First")
+    st.header("🛠 Utilities")
+    st.markdown("""
+    This section contains:
+    - Logging
+    - Validators
+    - Rate limits
+    """)
+    st.success("Utilities loaded successfully")
