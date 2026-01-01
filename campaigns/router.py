@@ -1,10 +1,5 @@
-# app/campaigns/router.py
-
 import streamlit as st
 
-# ─────────────────────────────────────────────
-# SAFE IMPORTS (do NOT execute on import)
-# ─────────────────────────────────────────────
 from campaigns.google_ads import render as google_ads_render
 from campaigns.meta_ads import render as meta_ads_render
 from campaigns.meta_adsets import render as meta_adsets_render
@@ -12,45 +7,26 @@ from campaigns.meta_insights import render as meta_insights_render
 from campaigns.tiktok_ads import render as tiktok_ads_render
 
 
-# ─────────────────────────────────────────────
-# SESSION STATE GUARDS
-# ─────────────────────────────────────────────
-def _ensure_session_state():
+def _ensure_state():
     defaults = {
-        "meta_token": None,
-        "google_token": None,
-        "active_campaign_view": "overview",
+        "google_connected": bool(st.secrets.get("GOOGLE_ADS_API_KEY")),
+        "meta_connected": bool(st.secrets.get("META_ACCESS_TOKEN")),
     }
     for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
+        st.session_state.setdefault(k, v)
 
 
-# ─────────────────────────────────────────────
-# MAIN RENDER ENTRY (USED BY streamlit_app.py)
-# ─────────────────────────────────────────────
 def render():
-    _ensure_session_state()
+    _ensure_state()
 
-    st.header("📣 Campaigns")
+    st.header("📣 Campaign Management")
 
-    # ---- Connection Status (non-blocking) ----
-    with st.expander("🔐 Platform Connection Status", expanded=False):
-        col1, col2 = st.columns(2)
+    # ---- STATUS ----
+    with st.expander("🔐 Platform Status"):
+        c1, c2 = st.columns(2)
+        c1.success("Google Ads Connected" if st.session_state.google_connected else "Google Ads Not Connected")
+        c2.success("Meta Ads Connected" if st.session_state.meta_connected else "Meta Ads Not Connected")
 
-        with col1:
-            if st.session_state.meta_token:
-                st.success("Meta Ads connected")
-            else:
-                st.warning("Meta Ads not connected")
-
-        with col2:
-            if st.session_state.google_token:
-                st.success("Google Ads connected")
-            else:
-                st.warning("Google Ads not connected")
-
-    # ---- Campaign Navigation ----
     tabs = st.tabs([
         "Overview",
         "Google Ads",
@@ -60,61 +36,37 @@ def render():
         "TikTok Ads",
     ])
 
-    # ─────────────────────────────────────────
-    # TAB 0 — OVERVIEW
-    # ─────────────────────────────────────────
     with tabs[0]:
-        st.subheader("Campaign Overview")
+        st.markdown("""
+        ### Campaign Control Center
+        - Create campaigns
+        - Manage ad sets
+        - Review performance
+        """)
 
-        st.markdown(
-            """
-            Use this section to:
-            - Review connected platforms
-            - Decide where to launch campaigns
-            - Validate research before spend
-            """
-        )
-
-        st.info("Campaign creation does not require both platforms connected.")
-
-    # ─────────────────────────────────────────
-    # TAB 1 — GOOGLE ADS
-    # ─────────────────────────────────────────
     with tabs[1]:
-        if not st.session_state.google_token:
-            st.warning("Connect Google Ads to continue.")
-        else:
+        if st.session_state.google_connected:
             google_ads_render()
+        else:
+            st.warning("Google Ads API key not set.")
 
-    # ─────────────────────────────────────────
-    # TAB 2 — META CAMPAIGNS
-    # ─────────────────────────────────────────
     with tabs[2]:
-        if not st.session_state.meta_token:
-            st.warning("Connect Meta Ads to continue.")
-        else:
+        if st.session_state.meta_connected:
             meta_ads_render()
+        else:
+            st.warning("Meta access token missing.")
 
-    # ─────────────────────────────────────────
-    # TAB 3 — META AD SETS
-    # ─────────────────────────────────────────
     with tabs[3]:
-        if not st.session_state.meta_token:
-            st.warning("Connect Meta Ads to continue.")
-        else:
+        if st.session_state.meta_connected:
             meta_adsets_render()
-
-    # ─────────────────────────────────────────
-    # TAB 4 — META INSIGHTS
-    # ─────────────────────────────────────────
-    with tabs[4]:
-        if not st.session_state.meta_token:
-            st.warning("Connect Meta Ads to continue.")
         else:
-            meta_insights_render()
+            st.warning("Meta access token missing.")
 
-    # ─────────────────────────────────────────
-    # TAB 5 — TIKTOK ADS
-    # ─────────────────────────────────────────
+    with tabs[4]:
+        if st.session_state.meta_connected:
+            meta_insights_render()
+        else:
+            st.warning("Meta access token missing.")
+
     with tabs[5]:
         tiktok_ads_render()
