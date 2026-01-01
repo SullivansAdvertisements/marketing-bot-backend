@@ -1,21 +1,38 @@
-import requests
 import os
+import requests
+import pandas as pd
+
 
 META_AD_LIBRARY_TOKEN = os.getenv("META_AD_LIBRARY_TOKEN")
 
-def get_meta_ads(keyword: str, country: str = "US"):
-    url = "https://graph.facebook.com/v19.0/ads_archive"
+
+def fetch_meta_ads(keyword: str):
+    if not keyword or not META_AD_LIBRARY_TOKEN:
+        return pd.DataFrame()
+
+    url = "https://graph.facebook.com/v18.0/ads_archive"
 
     params = {
-        "search_terms": keyword,
-        "ad_active_status": "ALL",
-        "ad_type": "ALL",
-        "ad_reached_countries": country,
         "access_token": META_AD_LIBRARY_TOKEN,
-        "fields": "ad_creative_bodies,ad_creative_link_titles,page_name,ad_delivery_start_time",
+        "search_terms": keyword,
+        "ad_type": "ALL",
+        "fields": "page_name,ad_creative_body,ad_delivery_start_time",
+        "limit": 10,
     }
 
-    r = requests.get(url, params=params)
-    data = r.json()
+    r = requests.get(url, params=params, timeout=10)
 
-    return data.get("data", [])
+    if r.status_code != 200:
+        return pd.DataFrame()
+
+    data = r.json().get("data", [])
+
+    rows = []
+    for ad in data:
+        rows.append({
+            "page": ad.get("page_name"),
+            "text": ad.get("ad_creative_body"),
+            "start_date": ad.get("ad_delivery_start_time"),
+        })
+
+    return pd.DataFrame(rows)
