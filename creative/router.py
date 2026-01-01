@@ -1,49 +1,41 @@
 import streamlit as st
-from creative.generator import generate_ad_copy
-from creative.meta_publish import publish_meta_creative
-from creative.google_publish import publish_google_ad
-
+from creative.pipeline import generate_creatives
 
 def render():
-    st.header("🎨 Creative → Live Platforms")
+    st.header("🎨 AI Creative Engine")
 
-    product = st.text_input("Product")
-    audience = st.text_input("Audience")
-    goal = st.selectbox("Goal", ["Conversions", "Traffic", "Leads"])
-    tone = st.selectbox("Tone", ["Bold", "Luxury", "Aggressive"])
+    if "research_results" not in st.session_state:
+        st.warning("Run research first.")
+        return
 
-    platform = st.multiselect(
-        "Send to platforms",
-        ["Meta", "Google"],
-        default=["Meta"],
+    goal = st.selectbox(
+        "Campaign Objective",
+        ["Conversions", "Traffic", "Leads", "Brand Awareness"],
     )
 
-    if st.button("Generate & Push Live"):
-        creative = generate_ad_copy(
-            product=product,
-            audience=audience,
-            goal=goal,
-            tone=tone,
-            platform="Multi",
-        )
+    platform = st.selectbox(
+        "Platform",
+        ["Meta", "Google", "TikTok"],
+    )
 
-        st.text_area("Generated Copy", creative["output"], height=200)
+    variations = st.slider(
+        "Number of creative variations",
+        min_value=3,
+        max_value=10,
+        value=5,
+    )
 
-        if "Meta" in platform:
-            with st.spinner("Publishing to Meta…"):
-                meta = publish_meta_creative(
-                    headline="🔥 " + product,
-                    primary_text=creative["output"],
-                    cta="Learn More",
-                )
-                st.success("Meta creative created")
-                st.json(meta)
+    if st.button("⚡ Generate High-Performance Creatives"):
+        with st.spinner("Generating performance-grade creatives…"):
+            creatives = generate_creatives(
+                research_data=st.session_state.research_results,
+                goal=goal,
+                platform=platform,
+                n_variations=variations,
+            )
 
-        if "Google" in platform:
-            with st.spinner("Preparing Google creative…"):
-                google = publish_google_ad(
-                    headline=product,
-                    description=creative["output"][:90],
-                )
-                st.success("Google creative ready")
-                st.json(google)
+        for i, c in enumerate(creatives, 1):
+            with st.expander(f"Creative #{i} — {c['Angle']}"):
+                st.markdown(f"**Headline:** {c['Headline']}")
+                st.markdown(f"**Primary Text:** {c['Primary Text']}")
+                st.markdown(f"**CTA:** {c['CTA']}")
