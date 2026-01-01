@@ -19,3 +19,17 @@ def render():
 
         st.success("Campaign plan created (ready for push)")
         st.dataframe(df, use_container_width=True)
+        
+        def estimate_google_forecast(
+    avg_cpc,
+    budget,
+    ctr=0.04,
+):
+    clicks = int(budget / avg_cpc)
+    impressions = int(clicks / ctr)
+
+    return {
+        "estimated_impressions": impressions,
+        "estimated_clicks": clicks,
+        "estimated_avg_cpc": avg_cpc,
+    }
