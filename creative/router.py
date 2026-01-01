@@ -7,7 +7,7 @@ DO NOT put business logic here.
 
 from typing import Dict
 
-from .generator import generate_ad_copy
+from generator import generate_ad_copy
 
 
 def generate_creative(
