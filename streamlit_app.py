@@ -1,4 +1,7 @@
-import streamlit as st
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from research.router import render as research_render
 from campaigns.router import render as campaigns_render
