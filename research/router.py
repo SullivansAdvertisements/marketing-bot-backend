@@ -148,16 +148,22 @@ def render():
                 )
 
             for future in as_completed(tasks):
-                try:
-                    data = future.result()
-                    if isinstance(data, dict):
-                        results.update(data)
-                    elif isinstance(data, pd.DataFrame):
-                        results[f"Result {len(results)+1}"] = data
-                except Exception as e:
-                    results[f"Error {len(results)+1}"] = {"error": str(e)}
+    try:
+        data = future.result()
 
-    st.session_state.research_results = results
+        if not data:
+            continue
+
+        if isinstance(data, dict) and len(data) > 0:
+            results.update(data)
+
+        elif isinstance(data, pd.DataFrame) and not data.empty:
+            results[f"Table {len(results)+1}"] = data
+
+    except Exception as e:
+        results[f"Error {len(results)+1}"] = {
+            "error": str(e)
+        }
 
     # -------------------------
     # RESULTS TABS
