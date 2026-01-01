@@ -5,11 +5,11 @@ import streamlit as st
 # ─────────────────────────────────────────────
 # SAFE IMPORTS (do NOT execute on import)
 # ─────────────────────────────────────────────
-from .campaigns.google_ads import render as google_ads_render
-from .campaigns.meta_ads import render as meta_ads_render
-from .campaigns.meta_adsets import render as meta_adsets_render
-from .campaigns.meta_insights import render as meta_insights_render
-from .campaigns.tiktok_ads import render as tiktok_ads_render
+from campaigns.google_ads import render as google_ads_render
+from campaigns.meta_ads import render as meta_ads_render
+from campaigns.meta_adsets import render as meta_adsets_render
+from campaigns.meta_insights import render as meta_insights_render
+from campaigns.tiktok_ads import render as tiktok_ads_render
 
 
 # ─────────────────────────────────────────────
