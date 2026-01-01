@@ -1,4 +1,4 @@
-import os
+#import os
 import streamlit as st
 import pandas as pd
 
@@ -65,46 +65,160 @@ with tabs[0]:
 # =================================
 # TAB 2 — RESEARCH (SAFE)
 # =================================
-with tabs[1]:
-    st.subheader("🔎 Market Research")
+with tab_research:
+    st.header("🔎 Advanced Market Research")
 
-    keyword = st.text_input("Keyword / Topic")
-    country = st.selectbox("Country", ["US", "CA", "UK", "AU", "Global"])
-    platforms = st.multiselect(
-        "Platforms",
-        ["Google Trends", "Meta Ads", "TikTok", "YouTube"],
-        default=["Google Trends"],
+    # -----------------------------
+    # SAFE IMPORTS (NO app. PREFIX)
+    # -----------------------------
+    from research.google_keywords import fetch_google_keywords
+    from research.google_trends import fetch_google_trends
+    from research.meta_ad_library import fetch_meta_ads
+    from research.youtube_trends import fetch_youtube_trends
+    from research.tiktok_trends import fetch_tiktok_trends
+
+    # -----------------------------
+    # SHARED INPUTS
+    # -----------------------------
+    keyword = st.text_input(
+        "Primary Keyword / Topic",
+        placeholder="e.g. streetwear hoodies",
+        key="research_keyword",
     )
 
-    if st.button("Run Research"):
-        results = []
+    country = st.selectbox(
+        "Country",
+        ["US", "CA", "UK", "AU", "Global"],
+        key="research_country",
+    )
 
-        if "Google Trends" in platforms:
-            results.append({
-                "Platform": "Google Trends",
-                "Insight": "Trending upward",
-                "Confidence": "High"
-            })
+    run_research = st.button("🚀 Run Full Research")
 
-        if "Meta Ads" in platforms:
-            results.append({
-                "Platform": "Meta Ads",
-                "Insight": "Active ads detected",
-                "Confidence": "Medium"
-            })
+    if not keyword:
+        st.info("Enter a keyword to unlock research.")
+        st.stop()
 
-        if "TikTok" in platforms:
-            results.append({
-                "Platform": "TikTok",
-                "Insight": "Short-form content trending",
-                "Confidence": "High"
-            })
+    # -----------------------------
+    # PLATFORM TABS (NEW)
+    # -----------------------------
+    r_tabs = st.tabs([
+        "🔍 Google Search",
+        "📈 Google Trends",
+        "📣 Meta Ads",
+        "🎥 YouTube",
+        "🎵 TikTok",
+    ])
 
-        if results:
-            st.dataframe(pd.DataFrame(results), use_container_width=True)
-        else:
-            st.warning("No platforms selected.")
+    # =============================
+    # GOOGLE SEARCH (KEYWORDS)
+    # =============================
+    with r_tabs[0]:
+        st.subheader("Google Search Demand & CPC")
 
+        if run_research:
+            try:
+                data = fetch_google_keywords(
+                    seed_keyword=keyword,
+                    geo_target_id="2840",  # US
+                    language_id="1000",
+                )
+
+                if not data:
+                    st.warning("No keyword data returned.")
+                else:
+                    df = pd.DataFrame(data)
+                    st.dataframe(df, use_container_width=True)
+
+                    with st.expander("Raw Keyword Data"):
+                        st.json(data)
+
+            except Exception as e:
+                st.error("Google Keywords failed")
+                st.exception(e)
+
+    # =============================
+    # GOOGLE TRENDS
+    # =============================
+    with r_tabs[1]:
+        st.subheader("Trend Velocity & Seasonality")
+
+        if run_research:
+            try:
+                data = fetch_google_trends(keyword, geo=country)
+
+                if not data:
+                    st.warning("No trends data.")
+                else:
+                    st.json(data)
+
+            except Exception as e:
+                st.error("Google Trends failed")
+                st.exception(e)
+
+    # =============================
+    # META ADS LIBRARY
+    # =============================
+    with r_tabs[2]:
+        st.subheader("Active Competitor Ads")
+
+        if run_research:
+            try:
+                ads = fetch_meta_ads(keyword)
+
+                if not ads:
+                    st.warning("No active ads found.")
+                else:
+                    df = pd.DataFrame(ads)
+                    st.dataframe(df, use_container_width=True)
+
+                    with st.expander("Raw Meta Ads"):
+                        st.json(ads)
+
+            except Exception as e:
+                st.error("Meta Ads Library failed")
+                st.exception(e)
+
+    # =============================
+    # YOUTUBE
+    # =============================
+    with r_tabs[3]:
+        st.subheader("YouTube Demand & Content Patterns")
+
+        if run_research:
+            try:
+                videos = fetch_youtube_trends(keyword)
+
+                if not videos:
+                    st.warning("No videos returned.")
+                else:
+                    df = pd.DataFrame(videos)
+                    st.dataframe(df, use_container_width=True)
+
+                    with st.expander("Raw YouTube Data"):
+                        st.json(videos)
+
+            except Exception as e:
+                st.error("YouTube research failed")
+                st.exception(e)
+
+    # =============================
+    # TIKTOK
+    # =============================
+    with r_tabs[4]:
+        st.subheader("TikTok Virality & Hashtags")
+
+        if run_research:
+            try:
+                data = fetch_tiktok_trends(keyword)
+
+                if not data:
+                    st.warning("No TikTok data.")
+                else:
+                    st.json(data)
+
+            except Exception as e:
+                st.error("TikTok research failed")
+                st.exception(e)
 # =================================
 # TAB 3 — CREATIVE (AI SAFE)
 # =================================
