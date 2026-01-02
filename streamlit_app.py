@@ -6,7 +6,7 @@ import pandas as pd
 # =========================================================
 st.set_page_config(
     page_title="Marketing Intelligence Bot",
-    layout="centered",
+    layout="
     initial_sidebar_state="collapsed",
 )
 
