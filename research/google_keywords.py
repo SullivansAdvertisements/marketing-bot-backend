@@ -20,12 +20,14 @@ def fetch_google_keywords(
     request.keyword_seed.keywords.append(seed_keyword)
 
     response = service.generate_keyword_ideas(request=request)
+
 if not results:
     return {
         "Google Keywords": {
             "warning": "No keyword data returned (low volume or API restriction)"
         }
     }
+    
     results = []
     for idea in response:
         metrics = idea.keyword_idea_metrics
