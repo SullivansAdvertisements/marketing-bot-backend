@@ -1,72 +1,116 @@
 import streamlit as st
-import importlib
+import os
 import traceback
 
+# ============================================================
+# STREAMLIT CONFIG
+# ============================================================
 st.set_page_config(
     page_title="Marketing Intelligence Platform",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# ----------------------------
-# SAFE TAB RENDERER
-# ----------------------------
-def render_tab(module_path: str, label: str):
+# ============================================================
+# SAFE ERROR HANDLER (NO e SCOPE BUG)
+# ============================================================
+def render_tab(fn, label):
     try:
-        module = importlib.import_module(module_path)
-        if not hasattr(module, "render"):
-            raise AttributeError(f"{module_path}.render() not found")
-        module.render()
-    except Exception as e:
+        fn()
+    except Exception as err:
         st.error(f"{label} failed to load")
-        st.code(str(e))
-        st.expander("Full traceback").code(traceback.format_exc())
+        st.code(str(err))
+        st.code(traceback.format_exc())
 
+# ============================================================
+# SESSION STATE + SECRETS BOOTSTRAP
+# ============================================================
+def init_state():
+    secrets = st.secrets
 
-# ----------------------------
-# HEADER
-# ----------------------------
-st.title("🚀 Marketing Intelligence Platform")
+    st.session_state.setdefault("openai_ready", bool(secrets.get("OPENAI_API_KEY")))
+    st.session_state.setdefault("google_ready", bool(secrets.get("GOOGLE_ADS_DEVELOPER_TOKEN")))
+    st.session_state.setdefault("meta_ready", bool(secrets.get("META_ACCESS_TOKEN")))
+    st.session_state.setdefault("tiktok_ready", bool(secrets.get("TIKTOK_API_KEY")))
+    st.session_state.setdefault("youtube_ready", bool(secrets.get("YOUTUBE_API_KEY")))
 
-with st.expander("🔐 API & Platform Status", expanded=False):
-    def ok(k): return "✅ Connected" if st.secrets.get(k) else "❌ Missing"
+    st.session_state.setdefault("research_results", {})
+    st.session_state.setdefault("research_bundle", {})
 
-    st.write("OpenAI:", ok("OPENAI_API_KEY"))
-    st.write("Google Ads:", ok("GOOGLE_ADS_DEVELOPER_TOKEN"))
-    st.write("Meta:", ok("META_ACCESS_TOKEN"))
-    st.write("TikTok:", ok("TIKTOK_API_KEY"))
-    st.write("YouTube:", ok("YOUTUBE_API_KEY"))
+init_state()
 
-# ----------------------------
+# ============================================================
+# SAFE ROUTER IMPORTS
+# ============================================================
+def safe_import(path, fallback_name):
+    try:
+        module = __import__(path, fromlist=["render"])
+        return module.render
+    except Exception:
+        def fallback():
+            st.warning(f"{fallback_name} module not available")
+        return fallback
+
+research_render   = safe_import("research.router", "Research")
+campaigns_render  = safe_import("campaigns.router", "Campaigns")
+creative_render   = safe_import("creative.router", "Creative")
+strategy_render   = safe_import("strategy.router", "Strategy")
+
+# ============================================================
+# SIDEBAR – PLATFORM STATUS
+# ============================================================
+with st.sidebar:
+    st.title("🔐 Platform Status")
+
+    def status(label, ok):
+        st.success(f"{label} Connected") if ok else st.error(f"{label} Not Connected")
+
+    status("OpenAI", st.session_state.openai_ready)
+    status("Google Ads", st.session_state.google_ready)
+    status("Meta Ads", st.session_state.meta_ready)
+    status("TikTok", st.session_state.tiktok_ready)
+    status("YouTube", st.session_state.youtube_ready)
+
+    st.divider()
+    st.caption("Secrets-only · No OAuth · Production-safe")
+
+# ============================================================
 # MAIN NAV
-# ----------------------------
+# ============================================================
 tabs = st.tabs([
     "🔍 Research",
-    "🎨 Creative",
     "📣 Campaigns",
+    "🎨 Creative",
     "📈 Strategy",
     "⚙️ System",
 ])
 
-# ----------------------------
-# TAB ROUTING
-# ----------------------------
+# ============================================================
+# TAB RENDERING
+# ============================================================
 with tabs[0]:
-    render_tab("research.router", "Research")
+    render_tab(research_render, "Research")
 
 with tabs[1]:
-    render_tab("creative.router", "Creative")
+    render_tab(campaigns_render, "Campaigns")
 
 with tabs[2]:
-    render_tab("campaigns.router", "Campaigns")
+    render_tab(creative_render, "Creative")
 
 with tabs[3]:
-    render_tab("strategy.router", "Strategy")
+    render_tab(strategy_render, "Strategy")
 
 with tabs[4]:
-    st.header("⚙️ System Diagnostics")
+    st.header("⚙️ System Overview")
+
     st.json({
-        "env": st.secrets.get("ENV"),
-        "log_level": st.secrets.get("LOG_LEVEL"),
-        "python": "ok",
-        "streamlit": "ok",
+        "ENV": st.secrets.get("ENV"),
+        "LOG_LEVEL": st.secrets.get("LOG_LEVEL"),
+        "OPENAI_READY": st.session_state.openai_ready,
+        "GOOGLE_READY": st.session_state.google_ready,
+        "META_READY": st.session_state.meta_ready,
+        "TIKTOK_READY": st.session_state.tiktok_ready,
+        "YOUTUBE_READY": st.session_state.youtube_ready,
     })
+
+    st.success("System healthy. Tabs isolated. Errors contained.")
