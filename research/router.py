@@ -146,8 +146,7 @@ def render():
                 tasks.append(
                     executor.submit(modules["youtube"], keyword)
                 )
-
-            for future in as_completed(tasks):
+for future in as_completed(tasks):
     try:
         data = future.result()
 
@@ -164,7 +163,7 @@ def render():
         results[f"Error {len(results)+1}"] = {
             "error": str(e)
         }
-
+     
     # -------------------------
     # RESULTS TABS
     # -------------------------
