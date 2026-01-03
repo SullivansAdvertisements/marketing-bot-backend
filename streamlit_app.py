@@ -11,17 +11,20 @@ st.set_page_config(
 # -----------------------------
 # SAFE ROUTER IMPORTS
 # -----------------------------
-def safe_import(path, name):
+def safe_import(path, attr="render"):
     try:
-        module = __import__(path, fromlist=[name])
-        return getattr(module, name)
-    except Exception as e:
+        module = __import__(path, fromlist=[attr])
+        return getattr(module, attr)
+    except Exception as err:
+        error_message = str(err)
+        traceback_text = traceback.format_exc()
+
         def _error():
             st.error(f"{path} failed to load")
-            st.code(str(e))
+            st.code(error_message)
+            st.expander("Traceback").code(traceback_text)
+
         return _error
-
-
 # -----------------------------
 # IMPORT ROUTERS
 # -----------------------------
