@@ -85,7 +85,85 @@ tabs = st.tabs([
 # -----------------------------
 with tabs[0]:
     research_render()
+import streamlit as st
+import pandas as pd
+from research.google_trends import fetch_google_trends
 
+st.subheader("📈 Google Trends Research")
+
+keywords = st.text_input(
+    "Enter keywords (comma separated)",
+    value="t shirt, streetwear, clothing brand"
+)
+
+geo = st.selectbox(
+    "Target Country",
+    ["US", "GB", "CA", "AU", "Worldwide"]
+)
+
+timeframe = st.selectbox(
+    "Timeframe",
+    ["today 3-m", "today 12-m", "today 5-y"]
+)
+
+if st.button("Run Google Trends Research"):
+    with st.spinner("Fetching Google Trends data..."):
+        data = fetch_google_trends(
+            keywords=[k.strip() for k in keywords.split(",")],
+            geo="" if geo == "Worldwide" else geo,
+            timeframe=timeframe
+        )
+
+    # -----------------------------
+    # Interest Over Time Table
+    # -----------------------------
+    if "interest_over_time" in data:
+        st.markdown("### 📊 Interest Over Time")
+        st.dataframe(
+            data["interest_over_time"],
+            use_container_width=True
+        )
+
+        st.download_button(
+            "Download Interest Over Time CSV",
+            data["interest_over_time"].to_csv(index=False),
+            file_name="google_trends_interest_over_time.csv",
+            mime="text/csv"
+        )
+
+    # -----------------------------
+    # Related Queries Table
+    # -----------------------------
+    if "related_queries" in data:
+        st.markdown("### 🔎 Related Queries")
+        st.dataframe(
+            data["related_queries"],
+            use_container_width=True
+        )
+
+        st.download_button(
+            "Download Related Queries CSV",
+            data["related_queries"].to_csv(index=False),
+            file_name="google_trends_related_queries.csv",
+            mime="text/csv"
+        )
+
+    # -----------------------------
+    # Related Topics Table
+    # -----------------------------
+    if "related_topics" in data:
+        st.markdown("### 🧠 Related Topics")
+        st.dataframe(
+            data["related_topics"],
+            use_container_width=True
+        )
+
+        st.download_button(
+            "Download Related Topics CSV",
+            data["related_topics"].to_csv(index=False),
+            file_name="google_trends_related_topics.csv",
+            mime="text/csv"
+        )
 with tabs[1]:
     campaigns_render()
 
