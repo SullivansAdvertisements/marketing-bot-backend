@@ -169,8 +169,8 @@ for future in as_completed(tasks):
     # -------------------------
     if not results:
         st.warning("No data returned.")
-        return
-
+    return
+def render():
     st.subheader("📊 Platform Intelligence")
 
     tabs = st.tabs(list(results.keys()))
