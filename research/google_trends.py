@@ -1,58 +1,79 @@
 # research/google_trends.py
-import pandas as pd
+
 from pytrends.request import TrendReq
-import traceback
+import pandas as pd
 
-def fetch_google_trends(keyword: str, country: str = "US"):
+def fetch_google_trends(
+    keywords,
+    geo="US",
+    timeframe="today 12-m"
+):
     """
-    Google Trends fetch with ZERO retry config.
-    No index limits.
-    No slicing.
-    No crashes.
+    Fetch full Google Trends data with:
+    - Interest over time
+    - Related queries
+    - Related topics
     """
 
-    try:
-        pytrends = TrendReq(
-            hl="en-US",
-            tz=360,
-            timeout=(10, 25),
-        )
+    pytrends = TrendReq(hl="en-US", tz=360)
+    pytrends.build_payload(
+        kw_list=keywords,
+        geo=geo,
+        timeframe=timeframe
+    )
 
-        geo = "" if country == "Global" else country
+    results = {}
 
-        pytrends.build_payload(
-            kw_list=[keyword],
-            geo=geo,
-            timeframe="today 12-m"
-        )
+    # -----------------------------
+    # Interest Over Time
+    # -----------------------------
+    interest_df = pytrends.interest_over_time()
+    if not interest_df.empty:
+        interest_df = interest_df.reset_index()
+        results["interest_over_time"] = interest_df
 
-        df = pytrends.interest_over_time()
+    # -----------------------------
+    # Related Queries
+    # -----------------------------
+    related_queries = pytrends.related_queries()
+    rq_rows = []
 
-        if df is None or df.empty:
-            return {
-                "Google Trends": {
-                    "status": "empty",
-                    "keyword": keyword,
-                    "note": "No trend data returned (low volume or blocked)"
-                }
-            }
+    for kw, data in related_queries.items():
+        if data["top"] is not None:
+            df = data["top"]
+            df["keyword"] = kw
+            df["type"] = "top"
+            rq_rows.append(df)
 
-        if "isPartial" in df.columns:
-            df = df.drop(columns=["isPartial"])
+        if data["rising"] is not None:
+            df = data["rising"]
+            df["keyword"] = kw
+            df["type"] = "rising"
+            rq_rows.append(df)
 
-        df.reset_index(inplace=True)
+    if rq_rows:
+        results["related_queries"] = pd.concat(rq_rows, ignore_index=True)
 
-        return {
-            "Google Trends": df
-        }
+    # -----------------------------
+    # Related Topics
+    # -----------------------------
+    related_topics = pytrends.related_topics()
+    rt_rows = []
 
-    except Exception as e:
-        return {
-            "Google Trends": {
-                "status": "error",
-                "keyword": keyword,
-                "error": str(e),
-                "note": "Google Trends blocks automated traffic aggressively",
-                "trace": traceback.format_exc()
-            }
-        }
+    for kw, data in related_topics.items():
+        if data["top"] is not None:
+            df = data["top"]
+            df["keyword"] = kw
+            df["type"] = "top"
+            rt_rows.append(df)
+
+        if data["rising"] is not None:
+            df = data["rising"]
+            df["keyword"] = kw
+            df["type"] = "rising"
+            rt_rows.append(df)
+
+    if rt_rows:
+        results["related_topics"] = pd.concat(rt_rows, ignore_index=True)
+
+    return results
