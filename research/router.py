@@ -165,9 +165,9 @@ for future in as_completed(tasks):
         }
      
     # -------------------------
-    # RESULTS TABS
+    # RESULTS
     # -------------------------
-       if not results:
+    if not results:
         st.warning("No data returned.")
         return
 
@@ -184,8 +184,7 @@ for future in as_completed(tasks):
             else:
                 st.json(data)
 
-    st.success("Research complete.")
-
+    st.success("Research complete and ready for Creative & Campaigns.")
     # -------------------------
     # CROSS-PLATFORM INSIGHTS
     # -------------------------
