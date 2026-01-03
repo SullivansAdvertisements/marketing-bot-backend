@@ -169,7 +169,6 @@ for future in as_completed(tasks):
     # -------------------------
     if not results:
         st.warning("No data returned.")
-        return
 
     st.subheader("📊 Platform Intelligence")
 
