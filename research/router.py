@@ -48,10 +48,10 @@ def _safe_import():
 # -------------------------------------------------
 def _key_status():
     return {
-        "Google Ads": bool(os.getenv("GOOGLE_ADS_API_KEY") or st.secrets.get("GOOGLE_ADS_API_KEY", None)),
-        "Meta Ads": bool(os.getenv("META_ACCESS_TOKEN") or st.secrets.get("META_ACCESS_TOKEN", None)),
-        "TikTok": bool(os.getenv("TIKTOK_API_KEY") or st.secrets.get("TIKTOK_API_KEY", None)),
-        "YouTube": bool(os.getenv("YOUTUBE_API_KEY") or st.secrets.get("YOUTUBE_API_KEY", None)),
+        "Google Ads": bool(os.getenv("GOOGLE_ADS_API_KEY") or st.secrets.get("GOOGLE_ADS_API_KEY")),
+        "Meta Ads": bool(os.getenv("META_ACCESS_TOKEN") or st.secrets.get("META_ACCESS_TOKEN")),
+        "TikTok": bool(os.getenv("TIKTOK_API_KEY") or st.secrets.get("TIKTOK_API_KEY")),
+        "YouTube": bool(os.getenv("YOUTUBE_API_KEY") or st.secrets.get("YOUTUBE_API_KEY")),
     }
 
 
@@ -73,7 +73,7 @@ def render():
     # -------------------------
     # API STATUS
     # -------------------------
-    with st.expander("🔐 API Connection Status", expanded=False):
+    with st.expander("🔐 API Connection Status"):
         for k, v in keys.items():
             st.success(f"{k} connected") if v else st.warning(f"{k} not connected")
 
@@ -119,56 +119,52 @@ def render():
     results = {}
 
     with st.spinner("Running deep market intelligence scan…"):
-        tasks = []
-
         with ThreadPoolExecutor(max_workers=5) as executor:
+            tasks = []
+
             if "Google Keywords" in platforms and modules["google_keywords"]:
-                tasks.append(
-                    executor.submit(modules["google_keywords"], keyword, country)
-                )
+                tasks.append(executor.submit(modules["google_keywords"], keyword, country))
 
             if "Google Trends" in platforms and modules["google_trends"]:
-                tasks.append(
-                    executor.submit(modules["google_trends"], keyword, country)
-                )
+                tasks.append(executor.submit(modules["google_trends"], keyword, country))
 
             if "Meta Ads Library" in platforms and modules["meta_ads"]:
-                tasks.append(
-                    executor.submit(modules["meta_ads"], keyword)
-                )
+                tasks.append(executor.submit(modules["meta_ads"], keyword))
 
             if "TikTok Trends" in platforms and modules["tiktok"]:
-                tasks.append(
-                    executor.submit(modules["tiktok"], keyword)
-                )
+                tasks.append(executor.submit(modules["tiktok"], keyword))
 
             if "YouTube Trends" in platforms and modules["youtube"]:
-                tasks.append(
-                    executor.submit(modules["youtube"], keyword)
-                )
-for future in as_completed(tasks):
-    try:
-        data = future.result()
+                tasks.append(executor.submit(modules["youtube"], keyword))
 
-        if not data:
-            continue
+            if not tasks:
+                st.warning("No platforms available to run research.")
+                return
 
-        if isinstance(data, dict) and len(data) > 0:
-            results.update(data)
+            for future in as_completed(tasks):
+                try:
+                    data = future.result()
 
-        elif isinstance(data, pd.DataFrame) and not data.empty:
-            results[f"Table {len(results)+1}"] = data
+                    if not data:
+                        continue
 
-    except Exception as e:
-        results[f"Error {len(results)+1}"] = {
-            "error": str(e)
-        }
-     
+                    if isinstance(data, dict):
+                        results.update(data)
+
+                    elif isinstance(data, pd.DataFrame) and not data.empty:
+                        results[f"Table {len(results)+1}"] = data
+
+                except Exception as e:
+                    results[f"Error {len(results)+1}"] = {"error": str(e)}
+
     # -------------------------
     # RESULTS
     # -------------------------
     if not results:
         st.warning("No data returned.")
+        return
+
+    st.session_state.research_results = results
 
     st.subheader("📊 Platform Intelligence")
 
@@ -183,7 +179,6 @@ for future in as_completed(tasks):
             else:
                 st.json(data)
 
-    st.success("Research complete and ready for Creative & Campaigns.")
     # -------------------------
     # CROSS-PLATFORM INSIGHTS
     # -------------------------
@@ -199,4 +194,4 @@ for future in as_completed(tasks):
         """
     )
 
-    st.success("Research is now ready for Strategy & Campaign execution.")
+    st.success("Research is now ready for Creative, Campaigns & Strategy.")
