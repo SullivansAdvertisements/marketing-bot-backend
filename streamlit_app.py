@@ -1,13 +1,21 @@
+import traceback
 import streamlit as st
 
-# -----------------------------
-# PAGE CONFIG
-# -----------------------------
-st.set_page_config(
-    page_title="Marketing Intelligence Bot",
-    layout="wide",
-)
+def safe_render(import_path: str):
+    try:
+        module = __import__(import_path, fromlist=["render"])
+        return module.render
+    except Exception as err:
+        error_message = str(err)
+        tb = traceback.format_exc()
 
+        def _error():
+            st.error(f"{import_path} failed to load")
+            st.code(error_message)
+            with st.expander("Traceback"):
+                st.code(tb)
+
+        return _error
 # -----------------------------
 # SAFE ROUTER IMPORTS
 # -----------------------------
