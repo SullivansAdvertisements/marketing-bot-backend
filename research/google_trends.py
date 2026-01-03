@@ -5,9 +5,10 @@ import traceback
 
 def fetch_google_trends(keyword: str, country: str = "US"):
     """
-    Unlimited, index-safe Google Trends fetch.
-    Never assumes list positions.
-    Never crashes router.
+    Google Trends fetch with ZERO retry config.
+    No index limits.
+    No slicing.
+    No crashes.
     """
 
     try:
@@ -15,8 +16,6 @@ def fetch_google_trends(keyword: str, country: str = "US"):
             hl="en-US",
             tz=360,
             timeout=(10, 25),
-            retries=2,
-            backoff_factor=0.2,
         )
 
         geo = "" if country == "Global" else country
@@ -27,25 +26,24 @@ def fetch_google_trends(keyword: str, country: str = "US"):
             timeframe="today 12-m"
         )
 
-        interest = pytrends.interest_over_time()
+        df = pytrends.interest_over_time()
 
-        if interest is None or interest.empty:
+        if df is None or df.empty:
             return {
                 "Google Trends": {
                     "status": "empty",
                     "keyword": keyword,
-                    "note": "Google returned no trend data (common for low-volume or blocked queries)"
+                    "note": "No trend data returned (low volume or blocked)"
                 }
             }
 
-        # Remove isPartial column if present
-        if "isPartial" in interest.columns:
-            interest = interest.drop(columns=["isPartial"])
+        if "isPartial" in df.columns:
+            df = df.drop(columns=["isPartial"])
 
-        interest.reset_index(inplace=True)
+        df.reset_index(inplace=True)
 
         return {
-            "Google Trends": interest
+            "Google Trends": df
         }
 
     except Exception as e:
