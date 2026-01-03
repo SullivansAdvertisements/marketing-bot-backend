@@ -167,10 +167,10 @@ for future in as_completed(tasks):
     # -------------------------
     # RESULTS TABS
     # -------------------------
-    if not results:
+       if not results:
         st.warning("No data returned.")
-    return
-def render():
+        return
+
     st.subheader("📊 Platform Intelligence")
 
     tabs = st.tabs(list(results.keys()))
@@ -183,6 +183,8 @@ def render():
                 st.dataframe(data, use_container_width=True)
             else:
                 st.json(data)
+
+    st.success("Research complete.")
 
     # -------------------------
     # CROSS-PLATFORM INSIGHTS
