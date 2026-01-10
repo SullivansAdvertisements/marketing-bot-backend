@@ -56,3 +56,21 @@ def fetch_google_trends(keyword: str, country: str = "US"):
                 "trace": traceback.format_exc()
             }
         }
+        
+def fetch_google_trends_locations(keyword: str):
+    pytrends = TrendReq(hl="en-US", tz=360)
+    pytrends.build_payload([keyword], timeframe="today 12-m")
+
+    df = pytrends.interest_by_region(resolution="COUNTRY")
+
+    if df is None or df.empty:
+        return []
+
+    return [
+        {
+            "location": idx,
+            "value": int(row[keyword]),
+        }
+        for idx, row in df.iterrows()
+        if row[keyword] > 0
+    ]
