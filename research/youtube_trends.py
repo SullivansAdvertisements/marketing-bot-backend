@@ -35,3 +35,10 @@ def fetch_youtube_trends(keyword, max_results=25):
         })
 
     return results
+    
+    results.append({
+    "title": snippet["title"],
+    "channel": snippet["channelTitle"],
+    "published_at": snippet["publishedAt"],
+    "location": snippet.get("country", "unknown"),
+})
