@@ -143,52 +143,70 @@ if tab == "Research":
                         )
             research_data["sources"]["google_trends"] = "google_trends"
 
-        # ---------------- YOUTUBE TRENDS ----------------
-fetch_youtube_trends, err = safe_import(
-    "research.youtube_trends", "fetch_youtube_trends"
-)
+                # ---------------- YOUTUBE TRENDS ----------------
+        fetch_youtube_trends, err = safe_import(
+            "research.youtube_trends", "fetch_youtube_trends"
+        )
 
-if fetch_youtube_trends:
-    try:
-        yt_results = fetch_youtube_trends(keyword)
-        for item in yt_results:
-            research_data["content_trends"].append(
-                normalize_youtube_trend(item)
-            )
-        research_data["sources"]["youtube"] = "youtube_api"
+        if fetch_youtube_trends:
+            try:
+                yt_results = fetch_youtube_trends(keyword)
+                for item in yt_results:
+                    research_data["content_trends"].append(
+                        normalize_youtube_trend(item)
+                    )
+                research_data["sources"]["youtube"] = "youtube_api"
 
-    except RuntimeError as e:
-        st.warning(f"YouTube disabled: {e}")
+            except RuntimeError as e:
+                st.warning(f"YouTube disabled: {e}")
 
-    except Exception as e:
-        st.warning(f"YouTube error: {e}")
+            except Exception as e:
+                st.warning(f"YouTube error: {e}")
 
-else:
-    st.warning(f"YouTube Trends unavailable: {err}")
+        else:
+            st.warning(f"YouTube Trends unavailable: {err}")
+
         # ---------------- TIKTOK TRENDS ----------------
         fetch_tiktok_trends, err = safe_import(
             "research.tiktok_trends", "fetch_tiktok_trends"
         )
+
         if fetch_tiktok_trends:
-            data = fetch_tiktok_trends(keyword)
-            if isinstance(data, list):
-                for item in data:
-                    research_data["content_trends"].append(
-                        normalize_tiktok_trend(item)
-                    )
-            research_data["sources"]["tiktok"] = "tiktok_api"
+            try:
+                tiktok_data = fetch_tiktok_trends(keyword)
+
+                if isinstance(tiktok_data, list):
+                    for item in tiktok_data:
+                        research_data["content_trends"].append(
+                            normalize_tiktok_trend(item)
+                        )
+
+                research_data["sources"]["tiktok"] = "tiktok_api"
+
+            except Exception as e:
+                st.warning(f"TikTok error: {e}")
+
+        else:
+            st.warning(f"TikTok Trends unavailable: {err}")
 
         # ---------------- META AD LIBRARY ----------------
         fetch_meta_ads, err = safe_import(
             "research.meta_ad_library", "fetch_meta_ads"
         )
-        if fetch_meta_ads:
-            for ad in fetch_meta_ads(keyword):
-                research_data["ad_intel"].append(
-                    normalize_meta_ad(ad)
-                )
-            research_data["sources"]["meta"] = "meta_ad_library"
 
+        if fetch_meta_ads:
+            try:
+                for ad in fetch_meta_ads(keyword):
+                    research_data["ad_intel"].append(
+                        normalize_meta_ad(ad)
+                    )
+                research_data["sources"]["meta"] = "meta_ad_library"
+
+            except Exception as e:
+                st.warning(f"Meta Ad Library error: {e}")
+
+        else:
+            st.warning(f"Meta Ad Library unavailable: {err}")
         # ---------------- VALIDATE ----------------
         if validate_research_data:
             validate_research_data(research_data)
