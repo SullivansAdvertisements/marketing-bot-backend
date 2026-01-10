@@ -1,5 +1,5 @@
 # ============================================================
-# SULLIVAN’S ADVERTISING — STREAMLIT APP (FULL PIPELINE)
+# SULLIVAN’S ADVERTISING — STREAMLIT APP (LOCATION-ENABLED)
 # ============================================================
 
 import streamlit as st
@@ -20,7 +20,7 @@ st.set_page_config(
 st.session_state.setdefault("research_data", None)
 
 # ============================================================
-# SAFE / LAZY IMPORT
+# SAFE IMPORT
 # ============================================================
 def safe_import(module_path: str, symbol: str):
     try:
@@ -30,7 +30,7 @@ def safe_import(module_path: str, symbol: str):
         return None, str(e)
 
 # ============================================================
-# IMPORT RESEARCH PIPELINE (SAFE)
+# PIPELINE IMPORTS
 # ============================================================
 validate_research_data, _ = safe_import(
     "research_data.validators", "validate_research_data"
@@ -51,6 +51,9 @@ normalize_tiktok_trend, _ = safe_import(
 normalize_meta_ad, _ = safe_import(
     "research_data.normalizers", "normalize_meta_ad"
 )
+normalize_location, _ = safe_import(
+    "research_data.normalizers", "normalize_location"
+)
 
 export_keywords_df, _ = safe_import(
     "research_data.exporters", "export_keywords_df"
@@ -65,21 +68,11 @@ export_ad_intel_df, _ = safe_import(
     "research_data.exporters", "export_ad_intel_df"
 )
 
-export_top_keywords, _ = safe_import(
-    "research_data.exporters", "export_top_keywords"
-)
-export_content_hooks, _ = safe_import(
-    "research_data.exporters", "export_content_hooks"
-)
-export_competitor_angles, _ = safe_import(
-    "research_data.exporters", "export_competitor_angles"
-)
-
 # ============================================================
 # HEADER
 # ============================================================
 st.title("🚀 Sullivan’s Advertising Intelligence")
-st.caption("Research → Contracts → Campaign Execution")
+st.caption("Research → Validation → Campaign Execution")
 
 # ============================================================
 # SIDEBAR
@@ -93,12 +86,12 @@ if tab == "Research":
 
     st.subheader("🔍 Advanced Market Research")
 
-    niche = st.text_input("Niche", placeholder="e.g. luxury streetwear")
-    keyword = st.text_input("Primary Keyword", placeholder="e.g. designer hoodies")
+    niche = st.text_input("Niche", placeholder="e.g. Music")
+    keyword = st.text_input("Primary Keyword", placeholder="e.g. Lil Baby")
 
     if st.button("Run Research"):
         if not niche or not keyword:
-            st.warning("Both fields required")
+            st.warning("Both fields are required")
             st.stop()
 
         research_data = {
@@ -108,6 +101,7 @@ if tab == "Research":
             "search_trends": [],
             "content_trends": [],
             "ad_intel": [],
+            "locations": [],
             "audiences": {},
             "funnels": {},
             "angles": {},
@@ -116,7 +110,7 @@ if tab == "Research":
         }
 
         # ---------------- GOOGLE KEYWORDS ----------------
-        fetch_google_keywords, err = safe_import(
+        fetch_google_keywords, _ = safe_import(
             "research.google_keywords", "fetch_google_keywords"
         )
         if fetch_google_keywords:
@@ -127,7 +121,7 @@ if tab == "Research":
             research_data["sources"]["google_keywords"] = "google_ads"
 
         # ---------------- GOOGLE TRENDS ----------------
-        fetch_google_trends, err = safe_import(
+        fetch_google_trends, _ = safe_import(
             "research.google_trends", "fetch_google_trends"
         )
         if fetch_google_trends:
@@ -143,70 +137,86 @@ if tab == "Research":
                         )
             research_data["sources"]["google_trends"] = "google_trends"
 
-                # ---------------- YOUTUBE TRENDS ----------------
-        fetch_youtube_trends, err = safe_import(
+        # ---------------- GOOGLE TREND LOCATIONS ----------------
+        fetch_google_trend_locations, _ = safe_import(
+            "research.google_trends", "fetch_google_trends_locations"
+        )
+        if fetch_google_trend_locations and normalize_location:
+            for row in fetch_google_trend_locations(keyword):
+                research_data["locations"].append(
+                    normalize_location(
+                        platform="google",
+                        location=row["location"],
+                        metric="interest",
+                        value=row["value"],
+                        source="google_trends",
+                    )
+                )
+
+        # ---------------- YOUTUBE TRENDS ----------------
+        fetch_youtube_trends, _ = safe_import(
             "research.youtube_trends", "fetch_youtube_trends"
         )
-
         if fetch_youtube_trends:
             try:
-                yt_results = fetch_youtube_trends(keyword)
-                for item in yt_results:
+                for item in fetch_youtube_trends(keyword):
                     research_data["content_trends"].append(
                         normalize_youtube_trend(item)
                     )
                 research_data["sources"]["youtube"] = "youtube_api"
-
-            except RuntimeError as e:
+            except Exception as e:
                 st.warning(f"YouTube disabled: {e}")
 
-            except Exception as e:
-                st.warning(f"YouTube error: {e}")
-
-        else:
-            st.warning(f"YouTube Trends unavailable: {err}")
-
         # ---------------- TIKTOK TRENDS ----------------
-        fetch_tiktok_trends, err = safe_import(
+        fetch_tiktok_trends, _ = safe_import(
             "research.tiktok_trends", "fetch_tiktok_trends"
         )
-
         if fetch_tiktok_trends:
             try:
-                tiktok_data = fetch_tiktok_trends(keyword)
-
-                if isinstance(tiktok_data, list):
-                    for item in tiktok_data:
+                data = fetch_tiktok_trends(keyword)
+                if isinstance(data, list):
+                    for item in data:
                         research_data["content_trends"].append(
                             normalize_tiktok_trend(item)
                         )
-
+                        if item.get("region_code"):
+                            research_data["locations"].append(
+                                normalize_location(
+                                    platform="tiktok",
+                                    location=item["region_code"],
+                                    metric="videos",
+                                    value=1,
+                                    source="tiktok_api",
+                                )
+                            )
                 research_data["sources"]["tiktok"] = "tiktok_api"
-
             except Exception as e:
                 st.warning(f"TikTok error: {e}")
 
-        else:
-            st.warning(f"TikTok Trends unavailable: {err}")
-
         # ---------------- META AD LIBRARY ----------------
-        fetch_meta_ads, err = safe_import(
+        fetch_meta_ads, _ = safe_import(
             "research.meta_ad_library", "fetch_meta_ads"
         )
-
         if fetch_meta_ads:
             try:
                 for ad in fetch_meta_ads(keyword):
                     research_data["ad_intel"].append(
                         normalize_meta_ad(ad)
                     )
+                    for loc in ad.get("locations", []):
+                        research_data["locations"].append(
+                            normalize_location(
+                                platform="meta",
+                                location=loc,
+                                metric="ads",
+                                value=1,
+                                source="meta_ad_library",
+                            )
+                        )
                 research_data["sources"]["meta"] = "meta_ad_library"
-
             except Exception as e:
-                st.warning(f"Meta Ad Library error: {e}")
+                st.warning(f"Meta error: {e}")
 
-        else:
-            st.warning(f"Meta Ad Library unavailable: {err}")
         # ---------------- VALIDATE ----------------
         if validate_research_data:
             validate_research_data(research_data)
@@ -219,7 +229,7 @@ if tab == "Research":
         st.divider()
         st.subheader("📊 Research Outputs")
 
-        st.markdown("### 🔑 Top Keywords")
+        st.markdown("### 🔑 Keywords")
         st.dataframe(export_keywords_df(st.session_state.research_data))
 
         st.markdown("### 📈 Search Trends")
@@ -231,32 +241,20 @@ if tab == "Research":
         st.markdown("### 🧠 Competitor Ads")
         st.dataframe(export_ad_intel_df(st.session_state.research_data))
 
+        if st.session_state.research_data.get("locations"):
+            st.markdown("### 🌍 Location Demand (All Platforms)")
+            st.dataframe(
+                pd.DataFrame(st.session_state.research_data["locations"]),
+                use_container_width=True,
+            )
+
 # ============================================================
 # ====================== CAMPAIGNS TAB =======================
 # ============================================================
 if tab == "Campaigns":
-
-    st.subheader("🎯 Campaign Intelligence")
-
+    st.subheader("🎯 Campaign Builder")
     if not st.session_state.research_data:
         st.info("Run research first")
         st.stop()
 
-    st.markdown("### 🔥 Best Keywords to Target")
-    st.write(export_top_keywords(st.session_state.research_data))
-
-    st.markdown("### 🎯 High-Performing Content Hooks")
-    st.write(export_content_hooks(st.session_state.research_data))
-
-    st.markdown("### ⚔️ Competitor Messaging Angles")
-    st.write(export_competitor_angles(st.session_state.research_data))
-
-    campaigns_render, err = safe_import(
-        "campaigns.router", "render"
-    )
-
-    if campaigns_render:
-        st.divider()
-        campaigns_render()
-    else:
-        st.warning("Campaign execution modules not installed")
+    st.json(st.session_state.research_data, expanded=False)
