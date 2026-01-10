@@ -1,5 +1,5 @@
 # ============================================================
-# SULLIVAN’S ADVERTISING — STREAMLIT APP (UX + KEYWORD GEN)
+# SULLIVAN’S ADVERTISING — STREAMLIT APP (GOOGLE ADS KEYWORDS)
 # ============================================================
 
 import streamlit as st
@@ -32,65 +32,35 @@ def safe_import(module_path: str, symbol: str):
         return None, str(e)
 
 # ============================================================
-# OPENAI HELPERS
+# OPENAI EXPLANATION
 # ============================================================
-def openai_client():
+def generate_research_explanation(research_data: dict) -> str:
     try:
         from openai import OpenAI
-        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    except Exception:
-        return None
+    except ImportError:
+        return "OpenAI SDK not installed."
 
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return "OPENAI_API_KEY not set."
 
-def generate_keywords_ai(niche: str, seed: str, limit: int = 20):
-    client = openai_client()
-    if not client:
-        return []
-
-    prompt = f"""
-You are a senior paid media strategist.
-
-Generate high-intent advertising keywords for:
-Niche: {niche}
-Seed keyword: {seed}
-
-Rules:
-- Commercial / buyer intent only
-- No fluff keywords
-- Output as a simple list
-- Max {limit} keywords
-"""
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
-    )
-
-    lines = response.choices[0].message.content.split("\n")
-    return [l.strip("-• ").strip() for l in lines if l.strip()]
-
-
-def generate_research_explanation(research_data: dict) -> str:
-    client = openai_client()
-    if not client:
-        return "OpenAI not configured."
+    client = OpenAI(api_key=api_key)
 
     summary = {
         "niche": research_data.get("niche"),
-        "keywords": len(research_data.get("keywords", [])),
-        "search_trends": len(research_data.get("search_trends", [])),
+        "platforms": research_data.get("platforms"),
+        "keyword_count": len(research_data.get("keywords", [])),
         "content_trends": len(research_data.get("content_trends", [])),
         "competitor_ads": len(research_data.get("ad_intel", [])),
         "locations": len(research_data.get("locations", [])),
     }
 
     prompt = f"""
-Explain this marketing research to a business owner in plain English.
-Focus on:
-- What the data means
-- How to use it for ads
-- What to do next
+You are a senior paid media strategist.
+
+Explain this research clearly to a business owner.
+Do NOT invent metrics. Explain how this data should
+be used to make advertising decisions.
 
 Data:
 {summary}
@@ -108,12 +78,12 @@ Data:
 # HEADER
 # ============================================================
 st.title("🚀 Sullivan’s Advertising Intelligence")
-st.caption("Guided research → clear insights → campaign execution")
+st.caption("Guided research → real data → campaign execution")
 
 # ============================================================
 # SIDEBAR
 # ============================================================
-tab = st.sidebar.radio("Navigation", ["Research", "Campaigns"])
+tab = st.sidebar.radio("Navigation", ["Research", "Campaigns"], index=0)
 
 # ============================================================
 # ======================= RESEARCH TAB =======================
@@ -122,8 +92,8 @@ if tab == "Research":
 
     st.markdown("## 🔍 Research Center")
     st.markdown(
-        "This section helps you **discover demand, competition, content trends, "
-        "and the best locations to advertise** — all before launching campaigns."
+        "Use this section to **generate real Google Ads keywords**, "
+        "validate demand, analyze competitors, and identify the best locations to advertise."
     )
 
     st.divider()
@@ -132,45 +102,87 @@ if tab == "Research":
     seed_keyword = st.text_input("Seed Keyword", placeholder="e.g. graphic hoodies")
 
     # ========================================================
-    # KEYWORD GENERATION
+    # GOOGLE ADS KEYWORD GENERATOR
     # ========================================================
-    st.markdown("## 🧠 Keyword Generator")
+    st.markdown("## 🔑 Keyword Generator (Google Ads)")
     st.markdown(
-        "Generate **high-intent keywords** you can use for Google Ads, Meta interests, "
-        "and creative angles."
+        "This tool uses **Google Ads Keyword Planner** to generate keyword ideas "
+        "with **real search volume, competition, and CPC estimates**."
     )
+
+    country_map = {
+        "United States": "2840",
+        "United Kingdom": "2826",
+        "Canada": "2124",
+        "Australia": "2036",
+    }
 
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        if st.button("Generate Keywords"):
-            if not niche or not seed_keyword:
-                st.warning("Enter niche and seed keyword first.")
-            else:
-                with st.spinner("Generating keywords…"):
-                    st.session_state.generated_keywords = generate_keywords_ai(
-                        niche, seed_keyword
-                    )
+        country = st.selectbox("Target Country", list(country_map.keys()))
+        generate_btn = st.button("Generate Keywords")
 
-    with col2:
-        if st.session_state.generated_keywords:
-            st.success("High-intent keywords generated")
-            st.write(st.session_state.generated_keywords)
+    if generate_btn:
+        if not seed_keyword:
+            st.warning("Enter a seed keyword first.")
+        else:
+            with st.spinner("Generating keywords from Google Ads…"):
+                fn, err = safe_import(
+                    "research.google_keywords",
+                    "generate_google_ads_keywords",
+                )
+
+                if not fn:
+                    st.error(
+                        "Google Ads keyword generator unavailable.\n\n"
+                        "Ensure:\n"
+                        "• google-ads SDK is installed\n"
+                        "• GOOGLE_ADS credentials are configured"
+                    )
+                else:
+                    try:
+                        st.session_state.generated_keywords = fn(
+                            seed_keyword,
+                            country_map[country],
+                        )
+                        st.success(
+                            f"Generated {len(st.session_state.generated_keywords)} keyword ideas"
+                        )
+                    except Exception as e:
+                        st.error(str(e))
+
+    if st.session_state.generated_keywords:
+        st.markdown("### 📊 Keyword Opportunities")
+        st.markdown("""
+**How to read this table**
+- **Avg Monthly Searches** → Demand
+- **Competition** → Auction density
+- **Top of Page CPC** → Estimated cost to compete
+""")
+
+        df_kw = pd.DataFrame(st.session_state.generated_keywords)
+        df_kw = df_kw.sort_values(
+            "avg_monthly_searches",
+            ascending=False,
+        )
+
+        st.dataframe(df_kw, use_container_width=True)
 
     st.divider()
 
     # ========================================================
     # RUN FULL RESEARCH
     # ========================================================
-    st.markdown("## 📊 Run Market Research")
+    st.markdown("## 📈 Run Full Market Research")
     st.markdown(
-        "This pulls **real platform data** (Google, Meta, TikTok, YouTube) "
-        "to validate demand and competition."
+        "This pulls **live platform data** (Google, Meta, YouTube, TikTok) "
+        "to validate demand, competition, and location opportunities."
     )
 
     if st.button("Run Full Research"):
         if not niche or not seed_keyword:
-            st.warning("Niche and seed keyword required.")
+            st.warning("Niche and seed keyword are required.")
             st.stop()
 
         research_data = {
@@ -228,28 +240,21 @@ if tab == "Research":
         st.markdown("## 🧾 What This Data Means")
         with st.expander("Click to understand each dataset", expanded=True):
             st.markdown("""
-**Keywords** – Search demand and commercial intent  
+**Keywords** – Search demand & commercial intent  
 **Search Trends** – Rising or declining interest  
-**Content Trends** – What type of content performs  
+**Content Trends** – What content formats perform  
 **Competitor Ads** – What others are actively running  
 **Locations** – Where demand is strongest  
 """)
 
-        st.markdown("## 🧠 AI Summary")
+        st.markdown("## 🧠 AI Research Summary")
         if st.button("Explain Research Results"):
             with st.spinner("Analyzing…"):
-                st.write(generate_research_explanation(
-                    st.session_state.research_data
-                ))
-
-        if st.session_state.generated_keywords:
-            st.markdown("## 🔑 Generated Keywords")
-            st.dataframe(
-                pd.DataFrame(
-                    {"keyword": st.session_state.generated_keywords}
-                ),
-                use_container_width=True,
-            )
+                st.write(
+                    generate_research_explanation(
+                        st.session_state.research_data
+                    )
+                )
 
         if st.session_state.research_data["keywords"]:
             st.markdown("## 📈 Google Keyword Data")
