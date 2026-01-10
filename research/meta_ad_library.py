@@ -1,29 +1,29 @@
-import requests
-import os
+def fetch_meta_ads(keyword: str):
+    results = []
 
-META_TOKEN = os.getenv("META_ACCESS_TOKEN")
+    # ... your API call logic above ...
 
-def fetch_meta_ads(keyword, country="US", limit=50):
-    url = "https://graph.facebook.com/v19.0/ads_archive"
+    for ad in response.get("data", []):
+        if not isinstance(ad, dict):
+            continue  # 🚫 skip malformed entries
 
-    params = {
-        "search_terms": keyword,
-        "ad_active_status": "ACTIVE",
-        "ad_type": "ALL",
-        "countries": country,
-        "fields": "ad_creative_body,ad_creative_link_caption,ad_creative_link_title,cta_type,page_name",
-        "access_token": META_TOKEN,
-        "limit": limit,
-    }
+        results.append({
+            "platform": "facebook",
+            "page_name": ad.get("page_name") or ad.get("page_name_en") or "Unknown",
+            "ad_creative": (
+                ad.get("ad_creative_body")
+                or ad.get("creative_bodies", [""])[0]
+                if isinstance(ad.get("creative_bodies"), list)
+                else ""
+            ),
+            "ad_copy": (
+                ad.get("ad_creative_body")
+                or ad.get("ad_snapshot_url", "")
+            ),
+            "cta": ad.get("call_to_action_type", ""),
+            "active": True,
+            "source": "meta_ad_library",
+            "locations": ad.get("delivery_by_region", []),
+        })
 
-    r = requests.get(url, params=params, timeout=10)
-    data = r.json()
-
-    return [
-    {
-        "page_name": ad.get("page_name"),
-        "ad_copy": ad.get("ad_creative_body", ""),
-        "active": True,
-        "locations": ad.get("delivery_by_region", []),
-    }
-]
+    return results
