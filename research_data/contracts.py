@@ -63,3 +63,10 @@ RESEARCH_DATA_CONTRACT = {
     "budget_guidance": dict,
     "sources": dict                   # platform → api name
 }
+LOCATION_CONTRACT = {
+    "platform": str,
+    "location": str,          # country or region code/name
+    "metric": str,            # searches / interest / ads / videos
+    "value": int | float,
+    "source": str,
+}
