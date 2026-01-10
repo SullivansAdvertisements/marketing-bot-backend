@@ -1,5 +1,5 @@
 # ============================================================
-# SULLIVAN’S ADVERTISING — STREAMLIT APP (HARDENED + EXPLAINABLE)
+# SULLIVAN’S ADVERTISING — STREAMLIT APP (FINAL STABLE)
 # ============================================================
 
 import streamlit as st
@@ -18,20 +18,15 @@ st.set_page_config(
 # ============================================================
 # SESSION STATE
 # ============================================================
-DEFAULT_STATE = {
-    "research_data": None,
-}
-
-for k, v in DEFAULT_STATE.items():
-    st.session_state.setdefault(k, v)
+st.session_state.setdefault("research_data", None)
 
 # ============================================================
-# SAFE IMPORT HELPER
+# SAFE IMPORT
 # ============================================================
-def safe_import(path: str, name: str):
+def safe_import(module_path: str, symbol: str):
     try:
-        module = __import__(path, fromlist=[name])
-        return getattr(module, name), None
+        module = __import__(module_path, fromlist=[symbol])
+        return getattr(module, symbol), None
     except Exception as e:
         return None, str(e)
 
@@ -63,9 +58,9 @@ def generate_research_explanation(research_data: dict) -> str:
     prompt = f"""
 You are a senior digital marketing analyst.
 
-Explain the following research data clearly for a business owner.
-Do NOT invent metrics. Explain what the data means and how it can
-be used for targeting, budgeting, and scaling.
+Explain this research clearly for a business owner.
+Do NOT invent metrics. Explain how this data helps
+with targeting, budgeting, and scaling.
 
 Data:
 {summary}
@@ -86,10 +81,9 @@ st.title("🚀 Sullivan’s Advertising Intelligence")
 st.caption("Research → Validation → Campaign Execution")
 
 # ============================================================
-# SIDEBAR NAV
+# SIDEBAR
 # ============================================================
-with st.sidebar:
-    tab = st.radio("Navigation", ["Research", "Campaigns"], index=0)
+tab = st.sidebar.radio("Navigation", ["Research", "Campaigns"])
 
 # ============================================================
 # ======================= RESEARCH TAB =======================
@@ -114,46 +108,44 @@ if tab == "Research":
             "content_trends": [],
             "ad_intel": [],
             "locations": [],
-            "audiences": {},
-            "funnels": {},
-            "angles": {},
-            "budget_guidance": {},
             "sources": {},
         }
 
         # ---------------- GOOGLE KEYWORDS ----------------
         fn, err = safe_import("research.google_keywords", "fetch_google_keywords")
         if fn:
-            research_data["keywords"] = fn(keyword)
-            research_data["sources"]["google_keywords"] = "Google Ads API"
-        else:
-            st.warning(f"Google Keywords disabled: {err}")
+            try:
+                research_data["keywords"] = fn(keyword)
+                research_data["sources"]["google_keywords"] = "google_ads"
+            except Exception as e:
+                st.warning(f"Google Keywords error: {e}")
 
         # ---------------- GOOGLE TRENDS ----------------
         fn, err = safe_import("research.google_trends", "fetch_google_trends")
         if fn:
-            result = fn(keyword, "Global")
-            if isinstance(result, dict) and "Google Trends" in result:
-                df = result["Google Trends"]
-                if isinstance(df, pd.DataFrame):
-                    for _, row in df.iterrows():
-                        research_data["search_trends"].append({
-                            "term": keyword,
-                            "interest_score": int(row[keyword]),
-                            "timeframe": "12m",
-                            "platform": "google",
-                            "source": "google_trends",
-                        })
-                        research_data["locations"].append({
-                            "platform": "google",
-                            "location": "Global",
-                            "metric": "interest",
-                            "value": int(row[keyword]),
-                            "source": "google_trends",
-                        })
-            research_data["sources"]["google_trends"] = "Google Trends"
-        else:
-            st.warning(f"Google Trends disabled: {err}")
+            try:
+                result = fn(keyword, "Global")
+                if isinstance(result, dict) and "Google Trends" in result:
+                    df = result["Google Trends"]
+                    if isinstance(df, pd.DataFrame):
+                        for _, row in df.iterrows():
+                            research_data["search_trends"].append({
+                                "term": keyword,
+                                "interest_score": int(row[keyword]),
+                                "timeframe": "12m",
+                                "platform": "google",
+                                "source": "google_trends",
+                            })
+                            research_data["locations"].append({
+                                "platform": "google",
+                                "location": "Global",
+                                "metric": "interest",
+                                "value": int(row[keyword]),
+                                "source": "google_trends",
+                            })
+                research_data["sources"]["google_trends"] = "google_trends"
+            except Exception as e:
+                st.warning(f"Google Trends error: {e}")
 
         # ---------------- YOUTUBE TRENDS ----------------
         fn, err = safe_import("research.youtube_trends", "fetch_youtube_trends")
@@ -165,15 +157,13 @@ if tab == "Research":
                     research_data["locations"].append({
                         "platform": "youtube",
                         "location": "Global",
-                        "metric": "views_rank",
+                        "metric": "videos",
                         "value": 1,
                         "source": "youtube_api",
                     })
-                research_data["sources"]["youtube"] = "YouTube API"
+                research_data["sources"]["youtube"] = "youtube_api"
             except Exception as e:
                 st.warning(f"YouTube disabled: {e}")
-        else:
-            st.warning(f"YouTube disabled: {err}")
 
         # ---------------- TIKTOK TRENDS ----------------
         fn, err = safe_import("research.tiktok_trends", "fetch_tiktok_trends")
@@ -186,33 +176,44 @@ if tab == "Research":
                     research_data["content_trends"].append(item)
                     research_data["locations"].append({
                         "platform": "tiktok",
-                        "location": item.get("region", "Global"),
-                        "metric": "trend",
+                        "location": item.get("region_code", "Global"),
+                        "metric": "trends",
                         "value": 1,
                         "source": "tiktok_api",
                     })
-                research_data["sources"]["tiktok"] = "TikTok API"
+                research_data["sources"]["tiktok"] = "tiktok_api"
             except Exception as e:
                 st.warning(f"TikTok error: {e}")
-        else:
-            st.warning(f"TikTok disabled: {err}")
 
-        # ---------------- META AD LIBRARY ----------------
+        # ---------------- META AD LIBRARY (SAFE) ----------------
         fn, err = safe_import("research.meta_ad_library", "fetch_meta_ads")
         if fn:
-            ads = fn(keyword)
-            research_data["ad_intel"] = ads
-            for ad in ads:
-                research_data["locations"].append({
-                    "platform": "meta",
-                    "location": ad.get("country", "US"),
-                    "metric": "active_ads",
-                    "value": 1,
-                    "source": "meta_ad_library",
-                })
-            research_data["sources"]["meta"] = "Meta Ad Library"
-        else:
-            st.warning(f"Meta Ad Library disabled: {err}")
+            try:
+                ads = fn(keyword)
+                safe_ads = []
+
+                for ad in ads:
+                    if not isinstance(ad, dict):
+                        continue
+
+                    safe_ads.append(ad)
+
+                    locations = ad.get("locations", [])
+                    if isinstance(locations, list):
+                        for loc in locations:
+                            research_data["locations"].append({
+                                "platform": "meta",
+                                "location": loc,
+                                "metric": "active_ads",
+                                "value": 1,
+                                "source": "meta_ad_library",
+                            })
+
+                research_data["ad_intel"] = safe_ads
+                research_data["sources"]["meta"] = "meta_ad_library"
+
+            except Exception as e:
+                st.warning(f"Meta Ad Library error: {e}")
 
         st.session_state.research_data = research_data
         st.success("Research validated and stored")
@@ -224,55 +225,44 @@ if tab == "Research":
 
         st.divider()
 
-        # ---------------- DATA KEY ----------------
+        # -------- DATA KEY --------
         st.markdown("## 🧾 Research Data Key")
         with st.expander("What does this data mean?", expanded=True):
             st.markdown("""
-**Keywords** – Google Ads demand & competition  
+**Keywords** – Google Ads search demand & competition  
 **Search Trends** – Interest over time (0–100 scale)  
 **Content Trends** – Top videos/posts driving attention  
 **Competitor Ads** – Active Meta ads & messaging  
 **Location Demand** – Regional demand signals per platform  
 """)
 
-        # ---------------- AI EXPLANATION ----------------
+        # -------- AI SUMMARY --------
         st.markdown("## 🧠 AI Research Summary")
         if st.button("Explain this research"):
             with st.spinner("Analyzing research…"):
-                explanation = generate_research_explanation(
-                    st.session_state.research_data
+                st.write(
+                    generate_research_explanation(
+                        st.session_state.research_data
+                    )
                 )
-                st.write(explanation)
 
-        # ---------------- KEYWORDS ----------------
-        if st.session_state.research_data["keywords"]:
-            st.markdown("## 🔑 Google Keywords")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["keywords"]),
-                use_container_width=True,
-            )
+        # -------- TABLES --------
+        if research_data["keywords"]:
+            st.markdown("## 🔑 Keywords")
+            st.dataframe(pd.DataFrame(research_data["keywords"]))
 
-        # ---------------- CONTENT ----------------
-        if st.session_state.research_data["content_trends"]:
-            st.markdown("## 🎥 Content Trends")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["content_trends"]),
-                use_container_width=True,
-            )
+        if research_data["content_trends"]:
+            st.markdown("## 🎬 Content Trends")
+            st.dataframe(pd.DataFrame(research_data["content_trends"]))
 
-        # ---------------- ADS ----------------
-        if st.session_state.research_data["ad_intel"]:
+        if research_data["ad_intel"]:
             st.markdown("## 📣 Competitor Ads")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["ad_intel"]),
-                use_container_width=True,
-            )
+            st.dataframe(pd.DataFrame(research_data["ad_intel"]))
 
-        # ---------------- LOCATION FILTER ----------------
-        if st.session_state.research_data["locations"]:
+        if research_data["locations"]:
             st.markdown("## 🌍 Location Demand")
 
-            df = pd.DataFrame(st.session_state.research_data["locations"])
+            df = pd.DataFrame(research_data["locations"])
 
             platforms = sorted(df["platform"].unique())
             selected_platforms = st.multiselect(
@@ -285,7 +275,7 @@ if tab == "Research":
 
             regions = sorted(df["location"].unique())
             selected_regions = st.multiselect(
-                "Regions / Countries",
+                "Regions",
                 regions,
                 default=regions[:10],
             )
