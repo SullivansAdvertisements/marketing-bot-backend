@@ -1,177 +1,238 @@
-import traceback
-import streamlit as st
+# ============================================================
+# SULLIVAN’S ADVERTISING – ENTERPRISE STREAMLIT APP
+# ============================================================
 
-def safe_render(import_path: str):
-    try:
-        module = __import__(import_path, fromlist=["render"])
-        return module.render
-    except Exception as err:
-        error_message = str(err)
-        tb = traceback.format_exc()
-
-        def _error():
-            st.error(f"{import_path} failed to load")
-            st.code(error_message)
-            with st.expander("Traceback"):
-                st.code(tb)
-
-        return _error
-# -----------------------------
-# SAFE ROUTER IMPORTS
-# -----------------------------
-def safe_import(path, attr="render"):
-    try:
-        module = __import__(path, fromlist=[attr])
-        return getattr(module, attr)
-    except Exception as err:
-        error_message = str(err)
-        traceback_text = traceback.format_exc()
-
-        def _error():
-            st.error(f"{path} failed to load")
-            st.code(error_message)
-            st.expander("Traceback").code(traceback_text)
-
-        return _error
-# -----------------------------
-# IMPORT ROUTERS
-# -----------------------------
-research_render = safe_import("research.router", "render")
-campaigns_render = safe_import("campaigns.router", "render")
-creative_render = safe_import("creative.router", "render")
-strategy_render = safe_import("strategy.router", "render")
-
-# Optional system/utils tab
-def system_render():
-    st.header("⚙️ System Status")
-
-    secrets = [
-        "OPENAI_API_KEY",
-        "GOOGLE_ADS_DEVELOPER_TOKEN",
-        "GOOGLE_ADS_CUSTOMER_ID",
-        "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
-        "GOOGLE_ADS_REFRESH_TOKEN",
-        "META_ACCESS_TOKEN",
-        "META_AD_ACCOUNT_ID",
-        "TIKTOK_API_KEY",
-        "YOUTUBE_API_KEY",
-    ]
-
-    rows = []
-    for key in secrets:
-        rows.append({
-            "Secret": key,
-            "Status": "Connected" if st.secrets.get(key) else "Missing"
-        })
-
-    st.dataframe(rows, use_container_width=True)
-
-    st.info("Secrets are read securely from Streamlit Cloud only.")
-
-
-# -----------------------------
-# NAVIGATION
-# -----------------------------
-tabs = st.tabs([
-    "🔍 Research",
-    "📣 Campaigns",
-    "🎨 Creative",
-    "📈 Strategy",
-    "⚙️ System",
-])
-
-# -----------------------------
-# TAB RENDERS
-# -----------------------------
-with tabs[0]:
-    research_render()
 import streamlit as st
 import pandas as pd
+
+# ============================================================
+# UTILS (GLOBAL GUARDRAILS)
+# ============================================================
+from utils import (
+    get_logger,
+    rate_limit,
+    validate_budget,
+    validate_age_range,
+    validate_countries,
+)
+
+logger = get_logger("streamlit_app")
+
+# ============================================================
+# RESEARCH
+# ============================================================
+from research.google_keywords import fetch_google_keywords
 from research.google_trends import fetch_google_trends
+from research.youtube_trends import fetch_youtube_trends
+from research.tiktok_trends import fetch_tiktok_trends
+from research.meta_ad_library import fetch_meta_ads
 
-st.subheader("📈 Google Trends Research")
-
-keywords = st.text_input(
-    "Enter keywords (comma separated)",
-    value="t shirt, streetwear, clothing brand"
+# ============================================================
+# RESEARCH DATA CONTRACT (MANDATORY)
+# ============================================================
+from research_data import (
+    validate_research_data,
+    export_keywords_df,
 )
 
-geo = st.selectbox(
-    "Target Country",
-    ["US", "GB", "CA", "AU", "Worldwide"]
+# ============================================================
+# CREATIVE
+# ============================================================
+from creative.router import generate_creatives
+
+# ============================================================
+# INTEGRATIONS
+# ============================================================
+from integrations.meta_ads import (
+    build_meta_targeting,
+    fetch_meta_audience_insights,
 )
 
-timeframe = st.selectbox(
-    "Timeframe",
-    ["today 3-m", "today 12-m", "today 5-y"]
+# ============================================================
+# CAMPAIGNS UI
+# ============================================================
+from campaigns.router import render as campaigns_render
+
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+st.set_page_config(
+    page_title="Sullivan’s Advertising AI",
+    page_icon="🎯",
+    layout="wide",
 )
 
-if st.button("Run Google Trends Research"):
-    with st.spinner("Fetching Google Trends data..."):
-        data = fetch_google_trends(
-            keywords=[k.strip() for k in keywords.split(",")],
-            geo="" if geo == "Worldwide" else geo,
-            timeframe=timeframe
+# ============================================================
+# SESSION STATE
+# ============================================================
+DEFAULT_STATE = {
+    "validated_research": None,
+    "meta_insights": None,
+    "creatives": None,
+}
+
+for k, v in DEFAULT_STATE.items():
+    st.session_state.setdefault(k, v)
+
+# ============================================================
+# SIDEBAR INPUTS
+# ============================================================
+with st.sidebar:
+    st.header("⚙️ Campaign Inputs")
+
+    niche = st.text_input("Niche")
+    product = st.text_input("Product / Offer")
+    keyword = st.text_input("Primary Keyword")
+
+    countries = st.multiselect("Target Countries", ["US"], default=["US"])
+    age_min, age_max = st.slider("Age Range", 18, 65, (18, 44))
+    daily_budget = st.number_input("Daily Budget ($)", min_value=1.0, value=20.0)
+
+    st.divider()
+
+    run_research = st.button("🔍 Run Research")
+    generate_ads = st.button("🎨 Generate Creatives")
+
+# ============================================================
+# MAIN HEADER
+# ============================================================
+st.title("🚀 Sullivan’s Advertising Intelligence")
+st.caption("Validated Research → Creative → Campaign Execution")
+
+# ============================================================
+# VALIDATION (USER INPUT)
+# ============================================================
+try:
+    validate_countries(countries)
+    validate_age_range(age_min, age_max)
+    validate_budget(daily_budget)
+except ValueError as e:
+    st.error(str(e))
+    st.stop()
+
+# ============================================================
+# RESEARCH PIPELINE
+# ============================================================
+if run_research:
+    if not niche or not keyword:
+        st.error("Niche and keyword are required")
+        st.stop()
+
+    try:
+        rate_limit("research", max_calls=5, window_seconds=60)
+
+        with st.spinner("Fetching real platform data…"):
+            research_data = {
+                "niche": niche,
+                "platforms": ["google", "meta", "youtube", "tiktok"],
+                "keywords": fetch_google_keywords(keyword),
+                "audiences": {
+                    "meta": fetch_meta_ads(keyword),
+                },
+                "funnels": {},
+                "angles": {},
+                "budget_guidance": {
+                    "daily_budget": daily_budget
+                },
+                "sources": {
+                    "google_trends": fetch_google_trends(keyword, "US"),
+                    "youtube": fetch_youtube_trends(keyword),
+                    "tiktok": fetch_tiktok_trends(keyword),
+                },
+            }
+
+            # 🔒 HARD CONTRACT ENFORCEMENT
+            validate_research_data(research_data)
+
+            st.session_state.validated_research = research_data
+            logger.info("Research validated successfully")
+
+        st.success("Research validated and locked")
+
+    except Exception as e:
+        logger.exception(e)
+        st.error(str(e))
+        st.stop()
+
+# ============================================================
+# SHOW VALIDATED RESEARCH
+# ============================================================
+if st.session_state.validated_research:
+    st.subheader("📊 Validated Research")
+
+    with st.expander("🔑 Keywords"):
+        df = export_keywords_df(st.session_state.validated_research)
+        st.dataframe(df, use_container_width=True)
+
+    with st.expander("📡 Sources"):
+        st.json(st.session_state.validated_research["sources"])
+
+# ============================================================
+# META AUDIENCE INSIGHTS
+# ============================================================
+if st.session_state.validated_research:
+    st.subheader("🎯 Meta Audience Estimates")
+
+    targeting = build_meta_targeting(
+        countries=countries,
+        age_min=age_min,
+        age_max=age_max,
+        interests=[keyword],
+    )
+
+    try:
+        rate_limit("meta_insights", max_calls=5, window_seconds=60)
+        insights = fetch_meta_audience_insights(targeting)
+        st.session_state.meta_insights = insights
+        st.json(insights)
+    except Exception as e:
+        st.warning(str(e))
+
+# ============================================================
+# CREATIVE GENERATION
+# ============================================================
+if generate_ads:
+    if not product or not st.session_state.validated_research:
+        st.error("Validated research and product required")
+        st.stop()
+
+    with st.spinner("Generating ranked creatives…"):
+        creatives = generate_creatives(
+            product=product,
+            goal="Conversions",
+            platform="Meta",
+            research_bundle={
+                **st.session_state.validated_research,
+                "meta_audience": st.session_state.meta_insights,
+            },
         )
 
-    # -----------------------------
-    # Interest Over Time Table
-    # -----------------------------
-    if "interest_over_time" in data:
-        st.markdown("### 📊 Interest Over Time")
-        st.dataframe(
-            data["interest_over_time"],
-            use_container_width=True
-        )
+        st.session_state.creatives = creatives
 
-        st.download_button(
-            "Download Interest Over Time CSV",
-            data["interest_over_time"].to_csv(index=False),
-            file_name="google_trends_interest_over_time.csv",
-            mime="text/csv"
-        )
+# ============================================================
+# SHOW CREATIVES
+# ============================================================
+if st.session_state.creatives:
+    st.subheader("🏆 Creative Rankings")
 
-    # -----------------------------
-    # Related Queries Table
-    # -----------------------------
-    if "related_queries" in data:
-        st.markdown("### 🔎 Related Queries")
-        st.dataframe(
-            data["related_queries"],
-            use_container_width=True
-        )
+    df = pd.DataFrame([
+        {
+            "Angle": c["angle"],
+            "Score": c["score"],
+            "Headlines": " | ".join(c["headlines"]),
+            "Primary Text": " | ".join(c["primary_texts"]),
+            "CTA": c["cta"],
+        }
+        for c in st.session_state.creatives
+    ]).sort_values("Score", ascending=False)
 
-        st.download_button(
-            "Download Related Queries CSV",
-            data["related_queries"].to_csv(index=False),
-            file_name="google_trends_related_queries.csv",
-            mime="text/csv"
-        )
+    st.dataframe(df, use_container_width=True)
 
-    # -----------------------------
-    # Related Topics Table
-    # -----------------------------
-    if "related_topics" in data:
-        st.markdown("### 🧠 Related Topics")
-        st.dataframe(
-            data["related_topics"],
-            use_container_width=True
-        )
-
-        st.download_button(
-            "Download Related Topics CSV",
-            data["related_topics"].to_csv(index=False),
-            file_name="google_trends_related_topics.csv",
-            mime="text/csv"
-        )
-with tabs[1]:
+# ============================================================
+# CAMPAIGN MANAGEMENT (FULL UI)
+# ============================================================
+if st.session_state.validated_research:
+    st.divider()
     campaigns_render()
-
-with tabs[2]:
-    creative_render()
-
-with tabs[3]:
-    strategy_render()
-
-with tabs[4]:
-    system_render()
+else:
+    st.info("Run validated research to unlock campaign management")
