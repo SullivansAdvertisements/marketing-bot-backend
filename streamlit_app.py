@@ -1,5 +1,5 @@
 # ============================================================
-# SULLIVAN’S ADVERTISING — STREAMLIT APP (HARDENED)
+# SULLIVAN’S ADVERTISING — STREAMLIT APP (FULL PIPELINE)
 # ============================================================
 
 import streamlit as st
@@ -17,62 +17,93 @@ st.set_page_config(
 # ============================================================
 # SESSION STATE
 # ============================================================
-DEFAULT_STATE = {
-    "research_data": None,
-}
-
-for k, v in DEFAULT_STATE.items():
-    st.session_state.setdefault(k, v)
+st.session_state.setdefault("research_data", None)
 
 # ============================================================
-# SAFE / LAZY IMPORT HELPERS
+# SAFE / LAZY IMPORT
 # ============================================================
-
-def safe_import(path: str, name: str):
-    """
-    Import a symbol lazily and safely.
-    Returns (callable, error_message)
-    """
+def safe_import(module_path: str, symbol: str):
     try:
-        module = __import__(path, fromlist=[name])
-        return getattr(module, name), None
+        module = __import__(module_path, fromlist=[symbol])
+        return getattr(module, symbol), None
     except Exception as e:
         return None, str(e)
+
+# ============================================================
+# IMPORT RESEARCH PIPELINE (SAFE)
+# ============================================================
+validate_research_data, _ = safe_import(
+    "research_data.validators", "validate_research_data"
+)
+
+normalize_google_keyword, _ = safe_import(
+    "research_data.normalizers", "normalize_google_keyword"
+)
+normalize_google_trend, _ = safe_import(
+    "research_data.normalizers", "normalize_google_trend"
+)
+normalize_youtube_trend, _ = safe_import(
+    "research_data.normalizers", "normalize_youtube_trend"
+)
+normalize_tiktok_trend, _ = safe_import(
+    "research_data.normalizers", "normalize_tiktok_trend"
+)
+normalize_meta_ad, _ = safe_import(
+    "research_data.normalizers", "normalize_meta_ad"
+)
+
+export_keywords_df, _ = safe_import(
+    "research_data.exporters", "export_keywords_df"
+)
+export_search_trends_df, _ = safe_import(
+    "research_data.exporters", "export_search_trends_df"
+)
+export_content_trends_df, _ = safe_import(
+    "research_data.exporters", "export_content_trends_df"
+)
+export_ad_intel_df, _ = safe_import(
+    "research_data.exporters", "export_ad_intel_df"
+)
+
+export_top_keywords, _ = safe_import(
+    "research_data.exporters", "export_top_keywords"
+)
+export_content_hooks, _ = safe_import(
+    "research_data.exporters", "export_content_hooks"
+)
+export_competitor_angles, _ = safe_import(
+    "research_data.exporters", "export_competitor_angles"
+)
 
 # ============================================================
 # HEADER
 # ============================================================
 st.title("🚀 Sullivan’s Advertising Intelligence")
-st.caption("Research → Validation → Campaign Execution")
+st.caption("Research → Contracts → Campaign Execution")
 
 # ============================================================
-# SIDEBAR NAV
+# SIDEBAR
 # ============================================================
-with st.sidebar:
-    tab = st.radio(
-        "Navigation",
-        ["Research", "Campaigns"],
-        index=0,
-    )
+tab = st.sidebar.radio("Navigation", ["Research", "Campaigns"])
 
 # ============================================================
 # ======================= RESEARCH TAB =======================
 # ============================================================
 if tab == "Research":
 
-    st.subheader("🔍 Research")
+    st.subheader("🔍 Advanced Market Research")
 
-    niche = st.text_input("Niche")
-    keyword = st.text_input("Primary Keyword")
+    niche = st.text_input("Niche", placeholder="e.g. luxury streetwear")
+    keyword = st.text_input("Primary Keyword", placeholder="e.g. designer hoodies")
 
     if st.button("Run Research"):
         if not niche or not keyword:
-            st.warning("Niche and keyword required")
+            st.warning("Both fields required")
             st.stop()
 
         research_data = {
             "niche": niche,
-            "platforms": ["google", "meta", "youtube", "tiktok"],
+            "platforms": ["google", "youtube", "tiktok", "meta"],
             "keywords": [],
             "search_trends": [],
             "content_trends": [],
@@ -89,109 +120,114 @@ if tab == "Research":
             "research.google_keywords", "fetch_google_keywords"
         )
         if fetch_google_keywords:
-            research_data["keywords"] = fetch_google_keywords(keyword)
-            research_data["sources"]["google_keywords"] = "Google Ads API"
-        else:
-            st.warning(f"Google Keywords unavailable: {err}")
+            for row in fetch_google_keywords(niche):
+                research_data["keywords"].append(
+                    normalize_google_keyword(row)
+                )
+            research_data["sources"]["google_keywords"] = "google_ads"
 
         # ---------------- GOOGLE TRENDS ----------------
         fetch_google_trends, err = safe_import(
             "research.google_trends", "fetch_google_trends"
         )
         if fetch_google_trends:
-            research_data["search_trends"] = fetch_google_trends(keyword)
-            research_data["sources"]["google_trends"] = "Google Trends"
-        else:
-            st.warning(f"Google Trends unavailable: {err}")
+            trends = fetch_google_trends(keyword, "Global")
+            if isinstance(trends, dict) and "Google Trends" in trends:
+                df = trends["Google Trends"]
+                if isinstance(df, pd.DataFrame):
+                    for _, r in df.iterrows():
+                        research_data["search_trends"].append(
+                            normalize_google_trend(
+                                keyword, r[keyword], "12m"
+                            )
+                        )
+            research_data["sources"]["google_trends"] = "google_trends"
 
         # ---------------- YOUTUBE TRENDS ----------------
         fetch_youtube_trends, err = safe_import(
             "research.youtube_trends", "fetch_youtube_trends"
         )
         if fetch_youtube_trends:
-            research_data["content_trends"] += fetch_youtube_trends(keyword)
-            research_data["sources"]["youtube"] = "YouTube Data API"
-        else:
-            st.warning(f"YouTube Trends unavailable: {err}")
+            for item in fetch_youtube_trends(keyword):
+                research_data["content_trends"].append(
+                    normalize_youtube_trend(item)
+                )
+            research_data["sources"]["youtube"] = "youtube_api"
 
         # ---------------- TIKTOK TRENDS ----------------
         fetch_tiktok_trends, err = safe_import(
             "research.tiktok_trends", "fetch_tiktok_trends"
         )
         if fetch_tiktok_trends:
-            research_data["content_trends"] += fetch_tiktok_trends(keyword)
-            research_data["sources"]["tiktok"] = "TikTok Trends"
-        else:
-            st.warning(f"TikTok Trends unavailable: {err}")
+            data = fetch_tiktok_trends(keyword)
+            if isinstance(data, list):
+                for item in data:
+                    research_data["content_trends"].append(
+                        normalize_tiktok_trend(item)
+                    )
+            research_data["sources"]["tiktok"] = "tiktok_api"
 
         # ---------------- META AD LIBRARY ----------------
         fetch_meta_ads, err = safe_import(
             "research.meta_ad_library", "fetch_meta_ads"
         )
         if fetch_meta_ads:
-            research_data["ad_intel"] = fetch_meta_ads(keyword)
-            research_data["sources"]["meta"] = "Meta Ad Library"
-        else:
-            st.warning(f"Meta Ad Library unavailable: {err}")
+            for ad in fetch_meta_ads(keyword):
+                research_data["ad_intel"].append(
+                    normalize_meta_ad(ad)
+                )
+            research_data["sources"]["meta"] = "meta_ad_library"
+
+        # ---------------- VALIDATE ----------------
+        if validate_research_data:
+            validate_research_data(research_data)
 
         st.session_state.research_data = research_data
-        st.success("Research complete")
+        st.success("Research validated and stored")
 
     # ---------------- DISPLAY ----------------
     if st.session_state.research_data:
         st.divider()
-        st.subheader("📊 Research Results")
+        st.subheader("📊 Research Outputs")
 
-        if st.session_state.research_data["keywords"]:
-            st.markdown("**Google Keywords**")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["keywords"]),
-                use_container_width=True,
-            )
+        st.markdown("### 🔑 Top Keywords")
+        st.dataframe(export_keywords_df(st.session_state.research_data))
 
-        if st.session_state.research_data["search_trends"]:
-            st.markdown("**Google Trends**")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["search_trends"]),
-                use_container_width=True,
-            )
+        st.markdown("### 📈 Search Trends")
+        st.dataframe(export_search_trends_df(st.session_state.research_data))
 
-        if st.session_state.research_data["content_trends"]:
-            st.markdown("**Content Trends (YouTube / TikTok)**")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["content_trends"]),
-                use_container_width=True,
-            )
+        st.markdown("### 🎬 Content Trends")
+        st.dataframe(export_content_trends_df(st.session_state.research_data))
 
-        if st.session_state.research_data["ad_intel"]:
-            st.markdown("**Meta Ad Library**")
-            st.dataframe(
-                pd.DataFrame(st.session_state.research_data["ad_intel"]),
-                use_container_width=True,
-            )
+        st.markdown("### 🧠 Competitor Ads")
+        st.dataframe(export_ad_intel_df(st.session_state.research_data))
 
 # ============================================================
 # ====================== CAMPAIGNS TAB =======================
 # ============================================================
 if tab == "Campaigns":
 
-    st.subheader("🎯 Campaigns")
+    st.subheader("🎯 Campaign Intelligence")
 
     if not st.session_state.research_data:
-        st.info("Run research first to unlock campaigns")
+        st.info("Run research first")
         st.stop()
+
+    st.markdown("### 🔥 Best Keywords to Target")
+    st.write(export_top_keywords(st.session_state.research_data))
+
+    st.markdown("### 🎯 High-Performing Content Hooks")
+    st.write(export_content_hooks(st.session_state.research_data))
+
+    st.markdown("### ⚔️ Competitor Messaging Angles")
+    st.write(export_competitor_angles(st.session_state.research_data))
 
     campaigns_render, err = safe_import(
         "campaigns.router", "render"
     )
 
-    if not campaigns_render:
-        st.error(
-            "Campaigns module unavailable.\n\n"
-            "This usually means a required SDK (Google Ads / Meta) "
-            "is not installed.\n\n"
-            f"Error: {err}"
-        )
-        st.stop()
-
-    campaigns_render()
+    if campaigns_render:
+        st.divider()
+        campaigns_render()
+    else:
+        st.warning("Campaign execution modules not installed")
