@@ -1,5 +1,5 @@
 # ============================================================
-# SULLIVAN’S ADVERTISING — STREAMLIT APP (FINAL STABLE)
+# SULLIVAN’S ADVERTISING — STREAMLIT APP (UX + KEYWORD GEN)
 # ============================================================
 
 import streamlit as st
@@ -19,6 +19,7 @@ st.set_page_config(
 # SESSION STATE
 # ============================================================
 st.session_state.setdefault("research_data", None)
+st.session_state.setdefault("generated_keywords", [])
 
 # ============================================================
 # SAFE IMPORT
@@ -31,36 +32,65 @@ def safe_import(module_path: str, symbol: str):
         return None, str(e)
 
 # ============================================================
-# OPENAI EXPLANATION
+# OPENAI HELPERS
 # ============================================================
-def generate_research_explanation(research_data: dict) -> str:
+def openai_client():
     try:
         from openai import OpenAI
-    except ImportError:
-        return "OpenAI SDK not installed."
+        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    except Exception:
+        return None
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return "OPENAI_API_KEY not set."
 
-    client = OpenAI(api_key=api_key)
+def generate_keywords_ai(niche: str, seed: str, limit: int = 20):
+    client = openai_client()
+    if not client:
+        return []
+
+    prompt = f"""
+You are a senior paid media strategist.
+
+Generate high-intent advertising keywords for:
+Niche: {niche}
+Seed keyword: {seed}
+
+Rules:
+- Commercial / buyer intent only
+- No fluff keywords
+- Output as a simple list
+- Max {limit} keywords
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+    )
+
+    lines = response.choices[0].message.content.split("\n")
+    return [l.strip("-• ").strip() for l in lines if l.strip()]
+
+
+def generate_research_explanation(research_data: dict) -> str:
+    client = openai_client()
+    if not client:
+        return "OpenAI not configured."
 
     summary = {
         "niche": research_data.get("niche"),
-        "platforms": research_data.get("platforms"),
-        "keyword_count": len(research_data.get("keywords", [])),
-        "search_trends_count": len(research_data.get("search_trends", [])),
-        "content_trends_count": len(research_data.get("content_trends", [])),
-        "ad_intel_count": len(research_data.get("ad_intel", [])),
-        "locations_sample": research_data.get("locations", [])[:10],
+        "keywords": len(research_data.get("keywords", [])),
+        "search_trends": len(research_data.get("search_trends", [])),
+        "content_trends": len(research_data.get("content_trends", [])),
+        "competitor_ads": len(research_data.get("ad_intel", [])),
+        "locations": len(research_data.get("locations", [])),
     }
 
     prompt = f"""
-You are a senior digital marketing analyst.
-
-Explain this research clearly for a business owner.
-Do NOT invent metrics. Explain how this data helps
-with targeting, budgeting, and scaling.
+Explain this marketing research to a business owner in plain English.
+Focus on:
+- What the data means
+- How to use it for ads
+- What to do next
 
 Data:
 {summary}
@@ -78,7 +108,7 @@ Data:
 # HEADER
 # ============================================================
 st.title("🚀 Sullivan’s Advertising Intelligence")
-st.caption("Research → Validation → Campaign Execution")
+st.caption("Guided research → clear insights → campaign execution")
 
 # ============================================================
 # SIDEBAR
@@ -90,14 +120,57 @@ tab = st.sidebar.radio("Navigation", ["Research", "Campaigns"])
 # ============================================================
 if tab == "Research":
 
-    st.subheader("🔍 Advanced Market Research")
+    st.markdown("## 🔍 Research Center")
+    st.markdown(
+        "This section helps you **discover demand, competition, content trends, "
+        "and the best locations to advertise** — all before launching campaigns."
+    )
 
-    niche = st.text_input("Niche")
-    keyword = st.text_input("Primary Keyword")
+    st.divider()
 
-    if st.button("Run Research"):
-        if not niche or not keyword:
-            st.warning("Niche and keyword required")
+    niche = st.text_input("Business / Niche", placeholder="e.g. Streetwear Brand")
+    seed_keyword = st.text_input("Seed Keyword", placeholder="e.g. graphic hoodies")
+
+    # ========================================================
+    # KEYWORD GENERATION
+    # ========================================================
+    st.markdown("## 🧠 Keyword Generator")
+    st.markdown(
+        "Generate **high-intent keywords** you can use for Google Ads, Meta interests, "
+        "and creative angles."
+    )
+
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        if st.button("Generate Keywords"):
+            if not niche or not seed_keyword:
+                st.warning("Enter niche and seed keyword first.")
+            else:
+                with st.spinner("Generating keywords…"):
+                    st.session_state.generated_keywords = generate_keywords_ai(
+                        niche, seed_keyword
+                    )
+
+    with col2:
+        if st.session_state.generated_keywords:
+            st.success("High-intent keywords generated")
+            st.write(st.session_state.generated_keywords)
+
+    st.divider()
+
+    # ========================================================
+    # RUN FULL RESEARCH
+    # ========================================================
+    st.markdown("## 📊 Run Market Research")
+    st.markdown(
+        "This pulls **real platform data** (Google, Meta, TikTok, YouTube) "
+        "to validate demand and competition."
+    )
+
+    if st.button("Run Full Research"):
+        if not niche or not seed_keyword:
+            st.warning("Niche and seed keyword required.")
             st.stop()
 
         research_data = {
@@ -112,178 +185,90 @@ if tab == "Research":
         }
 
         # ---------------- GOOGLE KEYWORDS ----------------
-        fn, err = safe_import("research.google_keywords", "fetch_google_keywords")
+        fn, _ = safe_import("research.google_keywords", "fetch_google_keywords")
         if fn:
-            try:
-                research_data["keywords"] = fn(keyword)
-                research_data["sources"]["google_keywords"] = "google_ads"
-            except Exception as e:
-                st.warning(f"Google Keywords error: {e}")
+            research_data["keywords"] = fn(seed_keyword)
 
         # ---------------- GOOGLE TRENDS ----------------
-        fn, err = safe_import("research.google_trends", "fetch_google_trends")
+        fn, _ = safe_import("research.google_trends", "fetch_google_trends")
         if fn:
-            try:
-                result = fn(keyword, "Global")
-                if isinstance(result, dict) and "Google Trends" in result:
-                    df = result["Google Trends"]
-                    if isinstance(df, pd.DataFrame):
-                        for _, row in df.iterrows():
-                            research_data["search_trends"].append({
-                                "term": keyword,
-                                "interest_score": int(row[keyword]),
-                                "timeframe": "12m",
-                                "platform": "google",
-                                "source": "google_trends",
-                            })
-                            research_data["locations"].append({
-                                "platform": "google",
-                                "location": "Global",
-                                "metric": "interest",
-                                "value": int(row[keyword]),
-                                "source": "google_trends",
-                            })
-                research_data["sources"]["google_trends"] = "google_trends"
-            except Exception as e:
-                st.warning(f"Google Trends error: {e}")
-
-        # ---------------- YOUTUBE TRENDS ----------------
-        fn, err = safe_import("research.youtube_trends", "fetch_youtube_trends")
-        if fn:
-            try:
-                yt = fn(keyword)
-                for item in yt:
-                    research_data["content_trends"].append(item)
-                    research_data["locations"].append({
-                        "platform": "youtube",
-                        "location": "Global",
-                        "metric": "videos",
-                        "value": 1,
-                        "source": "youtube_api",
+            res = fn(seed_keyword, "Global")
+            if isinstance(res, dict) and "Google Trends" in res:
+                df = res["Google Trends"]
+                for _, row in df.iterrows():
+                    research_data["search_trends"].append({
+                        "term": seed_keyword,
+                        "interest": int(row[seed_keyword]),
                     })
-                research_data["sources"]["youtube"] = "youtube_api"
-            except Exception as e:
-                st.warning(f"YouTube disabled: {e}")
 
-        # ---------------- TIKTOK TRENDS ----------------
-        fn, err = safe_import("research.tiktok_trends", "fetch_tiktok_trends")
-        if fn:
-            try:
-                tk = fn(keyword)
-                if isinstance(tk, dict):
-                    tk = tk.get("data", [])
-                for item in tk:
-                    research_data["content_trends"].append(item)
-                    research_data["locations"].append({
-                        "platform": "tiktok",
-                        "location": item.get("region_code", "Global"),
-                        "metric": "trends",
-                        "value": 1,
-                        "source": "tiktok_api",
-                    })
-                research_data["sources"]["tiktok"] = "tiktok_api"
-            except Exception as e:
-                st.warning(f"TikTok error: {e}")
-
-        # ---------------- META AD LIBRARY (SAFE) ----------------
-        fn, err = safe_import("research.meta_ad_library", "fetch_meta_ads")
-        if fn:
-            try:
-                ads = fn(keyword)
-                safe_ads = []
-
-                for ad in ads:
-                    if not isinstance(ad, dict):
-                        continue
-
-                    safe_ads.append(ad)
-
-                    locations = ad.get("locations", [])
-                    if isinstance(locations, list):
-                        for loc in locations:
-                            research_data["locations"].append({
-                                "platform": "meta",
-                                "location": loc,
-                                "metric": "active_ads",
-                                "value": 1,
-                                "source": "meta_ad_library",
-                            })
-
-                research_data["ad_intel"] = safe_ads
-                research_data["sources"]["meta"] = "meta_ad_library"
-
-            except Exception as e:
-                st.warning(f"Meta Ad Library error: {e}")
+        # ---------------- YOUTUBE / TIKTOK / META ----------------
+        for module, fn_name, key in [
+            ("research.youtube_trends", "fetch_youtube_trends", "content_trends"),
+            ("research.tiktok_trends", "fetch_tiktok_trends", "content_trends"),
+            ("research.meta_ad_library", "fetch_meta_ads", "ad_intel"),
+        ]:
+            fn, _ = safe_import(module, fn_name)
+            if fn:
+                try:
+                    data = fn(seed_keyword)
+                    if isinstance(data, list):
+                        research_data[key].extend(data)
+                except Exception:
+                    pass
 
         st.session_state.research_data = research_data
-        st.success("Research validated and stored")
+        st.success("Research completed")
 
     # ========================================================
-    # ===================== OUTPUTS ==========================
+    # DISPLAY RESULTS
     # ========================================================
     if st.session_state.research_data:
-
         st.divider()
 
-        # -------- DATA KEY --------
-        st.markdown("## 🧾 Research Data Key")
-        with st.expander("What does this data mean?", expanded=True):
+        st.markdown("## 🧾 What This Data Means")
+        with st.expander("Click to understand each dataset", expanded=True):
             st.markdown("""
-**Keywords** – Google Ads search demand & competition  
-**Search Trends** – Interest over time (0–100 scale)  
-**Content Trends** – Top videos/posts driving attention  
-**Competitor Ads** – Active Meta ads & messaging  
-**Location Demand** – Regional demand signals per platform  
+**Keywords** – Search demand and commercial intent  
+**Search Trends** – Rising or declining interest  
+**Content Trends** – What type of content performs  
+**Competitor Ads** – What others are actively running  
+**Locations** – Where demand is strongest  
 """)
 
-        # -------- AI SUMMARY --------
-        st.markdown("## 🧠 AI Research Summary")
-        if st.button("Explain this research"):
-            with st.spinner("Analyzing research…"):
-                st.write(
-                    generate_research_explanation(
-                        st.session_state.research_data
-                    )
-                )
+        st.markdown("## 🧠 AI Summary")
+        if st.button("Explain Research Results"):
+            with st.spinner("Analyzing…"):
+                st.write(generate_research_explanation(
+                    st.session_state.research_data
+                ))
 
-        # -------- TABLES --------
-        if research_data["keywords"]:
-            st.markdown("## 🔑 Keywords")
-            st.dataframe(pd.DataFrame(research_data["keywords"]))
-
-        if research_data["content_trends"]:
-            st.markdown("## 🎬 Content Trends")
-            st.dataframe(pd.DataFrame(research_data["content_trends"]))
-
-        if research_data["ad_intel"]:
-            st.markdown("## 📣 Competitor Ads")
-            st.dataframe(pd.DataFrame(research_data["ad_intel"]))
-
-        if research_data["locations"]:
-            st.markdown("## 🌍 Location Demand")
-
-            df = pd.DataFrame(research_data["locations"])
-
-            platforms = sorted(df["platform"].unique())
-            selected_platforms = st.multiselect(
-                "Platforms",
-                platforms,
-                default=platforms,
-            )
-
-            df = df[df["platform"].isin(selected_platforms)]
-
-            regions = sorted(df["location"].unique())
-            selected_regions = st.multiselect(
-                "Regions",
-                regions,
-                default=regions[:10],
-            )
-
-            df = df[df["location"].isin(selected_regions)]
-
+        if st.session_state.generated_keywords:
+            st.markdown("## 🔑 Generated Keywords")
             st.dataframe(
-                df.sort_values("value", ascending=False),
+                pd.DataFrame(
+                    {"keyword": st.session_state.generated_keywords}
+                ),
+                use_container_width=True,
+            )
+
+        if st.session_state.research_data["keywords"]:
+            st.markdown("## 📈 Google Keyword Data")
+            st.dataframe(
+                pd.DataFrame(st.session_state.research_data["keywords"]),
+                use_container_width=True,
+            )
+
+        if st.session_state.research_data["content_trends"]:
+            st.markdown("## 🎬 Content Trends")
+            st.dataframe(
+                pd.DataFrame(st.session_state.research_data["content_trends"]),
+                use_container_width=True,
+            )
+
+        if st.session_state.research_data["ad_intel"]:
+            st.markdown("## 📣 Competitor Ads")
+            st.dataframe(
+                pd.DataFrame(st.session_state.research_data["ad_intel"]),
                 use_container_width=True,
             )
 
@@ -292,10 +277,10 @@ if tab == "Research":
 # ============================================================
 if tab == "Campaigns":
 
-    st.subheader("🎯 Campaigns")
+    st.subheader("🎯 Campaign Builder")
 
     if not st.session_state.research_data:
-        st.info("Run research first to unlock campaigns")
+        st.info("Run research first to unlock campaigns.")
         st.stop()
 
     fn, err = safe_import("campaigns.router", "render")
