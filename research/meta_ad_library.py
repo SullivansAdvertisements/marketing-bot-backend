@@ -19,4 +19,11 @@ def fetch_meta_ads(keyword, country="US", limit=50):
     r = requests.get(url, params=params, timeout=10)
     data = r.json()
 
-    return data.get("data", [])
+    return [
+    {
+        "page_name": ad.get("page_name"),
+        "ad_copy": ad.get("ad_creative_body", ""),
+        "active": True,
+        "locations": ad.get("delivery_by_region", []),
+    }
+]
