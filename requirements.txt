@@ -6,3 +6,4 @@ python-dotenv
 pytrends==4.9.2
 openai>=1.0.0
 google-api-python-client>=2.120.0
+google-ads>=22.0.0
