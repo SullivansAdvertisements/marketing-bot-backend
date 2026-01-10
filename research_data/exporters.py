@@ -53,3 +53,16 @@ def export_competitor_angles(research_data: dict):
         for ad in research_data.get("ad_intel", [])
         if ad.get("active")
     ]
+    
+def export_top_locations(research_data: dict, limit: int = 10):
+    df = pd.DataFrame(research_data.get("locations", []))
+    if df.empty:
+        return df
+
+    return (
+        df.groupby(["platform", "location"])["value"]
+        .sum()
+        .reset_index()
+        .sort_values("value", ascending=False)
+        .head(limit)
+    )
