@@ -63,10 +63,10 @@ RESEARCH_SCHEMA = {
     "sources": dict,
 }
 
-LOCATION_CONTRACT = {
+LOCATION_SCHEMA = {
     "platform": str,
-    "location": str,          # country or region code/name
-    "metric": str,            # searches / interest / ads / videos
-    "value": int | float,
+    "location": str,
+    "metric": str,
+    "value": (int, float),
     "source": str,
 }
