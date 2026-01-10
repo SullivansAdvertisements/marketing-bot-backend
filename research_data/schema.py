@@ -62,3 +62,11 @@ RESEARCH_SCHEMA = {
     "budget_guidance": dict,
     "sources": dict,
 }
+
+LOCATION_CONTRACT = {
+    "platform": str,
+    "location": str,          # country or region code/name
+    "metric": str,            # searches / interest / ads / videos
+    "value": int | float,
+    "source": str,
+}
