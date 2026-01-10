@@ -76,3 +76,22 @@ def normalize_meta_ad(ad: dict) -> dict:
         "active": bool(ad.get("is_active", False)),
         "source": "meta_ad_library"
     }
+    
+# -------------------------
+# LOCATION DATA
+# -------------------------
+
+def normalize_location(
+    platform: str,
+    location: str,
+    metric: str,
+    value,
+    source: str
+) -> dict:
+    return {
+        "platform": platform,
+        "location": location,
+        "metric": metric,
+        "value": value,
+        "source": source,
+    }
