@@ -1,10 +1,19 @@
-from googleapiclient.discovery import build
 import os
 
-YOUTUBE_KEY = os.getenv("YOUTUBE_API_KEY")
-
 def fetch_youtube_trends(keyword, max_results=25):
-    youtube = build("youtube", "v3", developerKey=YOUTUBE_KEY)
+    try:
+        from googleapiclient.discovery import build
+    except ImportError:
+        raise RuntimeError(
+            "google-api-python-client is not installed. "
+            "Add it to requirements.txt to enable YouTube Trends."
+        )
+
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    if not api_key:
+        raise RuntimeError("YOUTUBE_API_KEY is missing")
+
+    youtube = build("youtube", "v3", developerKey=api_key)
 
     request = youtube.search().list(
         q=keyword,
@@ -13,14 +22,16 @@ def fetch_youtube_trends(keyword, max_results=25):
         order="viewCount",
         maxResults=max_results,
     )
+
     response = request.execute()
 
     results = []
-    for item in response["items"]:
+    for item in response.get("items", []):
+        snippet = item["snippet"]
         results.append({
-            "title": item["snippet"]["title"],
-            "channel": item["snippet"]["channelTitle"],
-            "published_at": item["snippet"]["publishedAt"],
+            "title": snippet["title"],
+            "channel": snippet["channelTitle"],
+            "published_at": snippet["publishedAt"],
         })
 
     return results
