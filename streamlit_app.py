@@ -1,7 +1,13 @@
 # ============================================================
 # SULLIVAN’S ADVERTISING — STREAMLIT APP (STABLE BUILD)
 # ============================================================
+import os
 
+# 🔒 FORCE GOOGLE ADS SDK PROTO MODE (GLOBAL)
+os.environ["GOOGLE_ADS_USE_PROTO_PLUS"] = "True"
+
+# OPTIONAL BUT RECOMMENDED: disable auto yaml detection
+os.environ.pop("GOOGLE_ADS_CONFIGURATION_FILE_PATH", None)
 import streamlit as st
 import pandas as pd
 import os
