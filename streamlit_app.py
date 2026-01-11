@@ -5,7 +5,12 @@
 import streamlit as st
 import pandas as pd
 import os
-
+try:
+    from research.google_keywords import generate_google_ads_keywords
+    test = generate_google_ads_keywords("test")
+    st.success("✅ Google Ads keyword generator working")
+except Exception as e:
+    st.error(f"❌ Google Ads error: {e}")
 # ============================================================
 # PAGE CONFIG
 # ============================================================
