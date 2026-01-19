@@ -1,5 +1,3 @@
-import requests
-
 def fetch_meta_delivery_estimate(
     access_token: str,
     ad_account_id: str,
@@ -8,7 +6,7 @@ def fetch_meta_delivery_estimate(
     age_min: int,
     age_max: int,
 ):
-    url = f"https://graph.facebook.com/v18.0/act_{ad_account_id}/delivery_estimate"
+    url = f"https://graph.facebook.com/v18.0/{ad_account_id}/delivery_estimate"
 
     payload = {
         "access_token": access_token,
@@ -25,8 +23,8 @@ def fetch_meta_delivery_estimate(
 
     response = requests.post(url, json=payload).json()
 
-    if "data" not in response or not response["data"]:
-        return None, response.get("error", "No delivery estimate returned")
+    if "data" not in response:
+        return None, response.get("error", "Meta API error")
 
     est = response["data"][0]
 
