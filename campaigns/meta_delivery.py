@@ -1,3 +1,5 @@
+import requests
+from typing import List
 def fetch_meta_delivery_estimate(
     access_token: str,
     ad_account_id: str,
